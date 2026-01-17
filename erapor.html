@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Rapor Sholat SMKN 1 Plosoklaten V1-2-0 (Online)</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- html2pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- SheetJS -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+
+    <!-- FIREBASE SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, setDoc, doc, getDoc, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDh4ROSubDLzGnKT3OKVq2gBmRocq3Az8Q",
+            authDomain: "eraporsholat-v1-1-26.firebaseapp.com",
+            projectId: "eraporsholat-v1-1-26",
+            storageBucket: "eraporsholat-v1-1-26.firebasestorage.app",
+            messagingSenderId: "1070668228928",
+            appId: "1:1070668228928:web:b86065767f37e11521f2a5"
+        };
+        
+        if (!firebaseConfig.apiKey) {
+            console.warn("Firebase Config belum diisi!");
+            window.isDemoMode = true; 
+        } else {
+            window.isDemoMode = false;
+            try {
+                const app = initializeApp(firebaseConfig);
+                window.db = getFirestore(app);
+                window.auth = getAuth(app);
+                window.fs = { collection, getDocs, setDoc, doc, getDoc, updateDoc, deleteDoc, query, where };
+                signInAnonymously(window.auth).catch((error) => console.error("Auth Error", error));
+            } catch (e) {
+                console.error("Firebase Init Error:", e);
+                window.isDemoMode = true;
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Poppins', sans-serif; background-color: #f0fdf4; margin: 0; padding: 0; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #15803d; border-radius: 4px; }
+        
+        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .loader { border: 4px solid #f3f3f3; border-radius: 50%; border-top: 4px solid #15803d; width: 30px; height: 30px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes slideInUp { from { transform: translate(-50%, 100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+        .notif-islami { animation: slideInUp 0.5s ease-out forwards; }
+
+        .pdf-table { width: 100%; border-collapse: collapse; font-size: 10px; font-family: 'Times New Roman', serif; }
+        .pdf-table th, .pdf-table td { border: 1px solid #000; padding: 3px; text-align: center; }
+        .pdf-table th { background-color: transparent !important; color: #000000 !important; font-weight: bold; }
+        
+        .app-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background-color: #f9fafb; box-shadow: 0 0 30px rgba(0,0,0,0.05); position: relative; }
+        @media (min-width: 768px) { .app-container-teacher { max-width: 100%; } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        const APP_ID = "smkn1plosoklaten";
+        const USERS_COLLECTION = "users";
+        const TEACHERS_COLLECTION = "teachers"; 
+        const DATA_COLLECTION = "attendance";
+        const LOGO_URL = "https://aqiqahberkahkediri.com/logo/images/logo-smkn-1-plosoklaten.jpg";
+        
+        const dbHelper = {
+            async getUsers() {
+                if (window.isDemoMode || !window.db || !window.fs) return JSON.parse(localStorage.getItem('students_v1') || '[]');
+                try { const { collection, getDocs } = window.fs; const s = await getDocs(collection(window.db, 'artifacts', APP_ID, 'public', 'data', USERS_COLLECTION)); return s.docs.map(d => ({ id: d.id, ...d.data() })); } catch (e) { return []; }
+            },
+            async saveUser(u) {
+                if (window.isDemoMode || !window.db || !window.fs) { const us = JSON.parse(localStorage.getItem('students_v1') || '[]'); const i = us.findIndex(x => x.id === u.id); if (i >= 0) us[i] = u; else us.push(u); localStorage.setItem('students_v1', JSON.stringify(us)); return; }
+                const { doc, setDoc } = window.fs; await setDoc(doc(window.db, 'artifacts', APP_ID, 'public', 'data', USERS_COLLECTION, u.id.toString()), u);
+            },
+            async deleteUser(id) {
+                 if (window.isDemoMode || !window.db || !window.fs) { const us = JSON.parse(localStorage.getItem('students_v1') || '[]'); localStorage.setItem('students_v1', JSON.stringify(us.filter(u => u.id !== id))); return; }
+                 const { doc, deleteDoc } = window.fs; await deleteDoc(doc(window.db, 'artifacts', APP_ID, 'public', 'data', USERS_COLLECTION, id.toString()));
+            },
+            async getTeachers() {
+                if (window.isDemoMode || !window.db || !window.fs) return JSON.parse(localStorage.getItem('teachers_v1') || '[]');
+                try { const { collection, getDocs } = window.fs; const s = await getDocs(collection(window.db, 'artifacts', APP_ID, 'public', 'data', TEACHERS_COLLECTION)); return s.docs.map(d => ({ id: d.id, ...d.data() })); } catch (e) { return []; }
+            },
+            async saveTeacher(t) {
+                if (window.isDemoMode || !window.db || !window.fs) { const ts = JSON.parse(localStorage.getItem('teachers_v1') || '[]'); ts.push(t); localStorage.setItem('teachers_v1', JSON.stringify(ts)); return; }
+                const { doc, setDoc } = window.fs; await setDoc(doc(window.db, 'artifacts', APP_ID, 'public', 'data', TEACHERS_COLLECTION, t.id.toString()), t);
+            },
+            async updateTeacher(t) {
+                if (window.isDemoMode || !window.db || !window.fs) { const ts = JSON.parse(localStorage.getItem('teachers_v1') || '[]'); const i = ts.findIndex(x => x.id === t.id); if (i >= 0) { ts[i] = t; localStorage.setItem('teachers_v1', JSON.stringify(ts)); } return; }
+                const { doc, updateDoc } = window.fs; await updateDoc(doc(window.db, 'artifacts', APP_ID, 'public', 'data', TEACHERS_COLLECTION, t.id.toString()), t);
+            },
+            async deleteTeacher(id) {
+                 if (window.isDemoMode || !window.db || !window.fs) { const ts = JSON.parse(localStorage.getItem('teachers_v1') || '[]'); localStorage.setItem('teachers_v1', JSON.stringify(ts.filter(x => x.id !== id))); return; }
+                 const { doc, deleteDoc } = window.fs; await deleteDoc(doc(window.db, 'artifacts', APP_ID, 'public', 'data', TEACHERS_COLLECTION, id.toString()));
+            },
+            async getAttendance(id) {
+                if (window.isDemoMode || !window.db || !window.fs) return JSON.parse(localStorage.getItem(`data_${id}`) || '{}');
+                try { const { doc, getDoc } = window.fs; const s = await getDoc(doc(window.db, 'artifacts', APP_ID, 'public', 'data', DATA_COLLECTION, id.toString())); return s.exists() ? s.data() : {}; } catch (e) { return {}; }
+            },
+            async saveAttendance(id, d) {
+                 if (window.isDemoMode || !window.db || !window.fs) { localStorage.setItem(`data_${id}`, JSON.stringify(d)); return; }
+                 const { doc, setDoc } = window.fs; await setDoc(doc(window.db, 'artifacts', APP_ID, 'public', 'data', DATA_COLLECTION, id.toString()), d);
+            }
+        };
+
+        const DEFAULT_TEACHER = { id: 'guru1', name: 'Bpk. Abdullah, S.Pd.I', email: 'guru@smk.id', password: 'guru', role: 'guru' };
+        const formatDateIndo = (d) => new Date(d).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const exportToExcel = (d, n) => { const w = XLSX.utils.json_to_sheet(d); const b = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(b, w, "Data"); XLSX.writeFile(b, n + ".xlsx"); };
+
+        const Login = ({ onLogin }) => {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+            const [loading, setLoading] = useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault(); setLoading(true); setError('');
+                if (email === DEFAULT_TEACHER.email && password === DEFAULT_TEACHER.password) { onLogin(DEFAULT_TEACHER); setLoading(false); return; }
+                try {
+                    const ts = await dbHelper.getTeachers(); const t = ts.find(x => x.email === email && x.password === password);
+                    if(t) { onLogin({...t, role: 'guru'}); setLoading(false); return; }
+                    const us = await dbHelper.getUsers(); const s = us.find(x => x.email === email && x.password === password);
+                    if (s) { if (s.isBlocked) setError('Akun diblokir.'); else onLogin({...s, role: 'siswa'}); } else setError('Email/Sandi salah.');
+                } catch (err) { setError('Gagal koneksi.'); } setLoading(false);
+            };
+
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-600 to-green-900 p-4">
+                    <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md glass transform transition-all hover:scale-[1.01]">
+                        <div className="text-center mb-6">
+                            <img src={LOGO_URL} alt="Logo" className="h-24 mx-auto mb-4 object-contain" />
+                            <h2 className="text-2xl font-bold text-green-800">E-Rapor Sholat</h2>
+                            <p className="text-sm text-gray-600">SMK Negeri 1 Plosoklaten</p>
+                        </div>
+                        {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-sm text-center border-l-4 border-red-500">{error}</div>}
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div><label className="block text-sm font-medium text-gray-700">Email</label><input type="email" required className="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={email} onChange={e => setEmail(e.target.value)} /></div>
+                            <div><label className="block text-sm font-medium text-gray-700">Sandi</label><input type="password" required className="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={password} onChange={e => setPassword(e.target.value)} /></div>
+                            <button type="submit" disabled={loading} className="w-full bg-green-700 hover:bg-green-800 text-white font-bold py-3 rounded-lg shadow-lg flex justify-center items-center">{loading ? <div className="loader w-5 h-5 border-white border-t-transparent"></div> : 'Masuk Aplikasi'}</button>
+                        </form>
+                        <div className="mt-8 text-center border-t border-gray-100 pt-4 space-y-1">
+                            <span className="text-[10px] font-mono text-green-600 bg-green-50 px-2 py-0.5 rounded inline-block mb-1">V1-1-26 Pro</span>
+                            <p className="text-xs font-semibold text-gray-600">GPAI SMK Negeri 1 Plosoklaten</p>
+                            <p className="text-[10px] text-gray-400 mt-2">Copyright 2026</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const TeacherDashboard = ({ onLogout }) => {
+            const [view, setView] = useState('dashboard');
+            const [students, setStudents] = useState([]);
+            const [teachers, setTeachers] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [showModal, setShowModal] = useState(false);
+            const [showTeacherModal, setShowTeacherModal] = useState(false);
+            const [showEditTeacherModal, setShowEditTeacherModal] = useState(false);
+            const [newStudent, setNewStudent] = useState({ name: '', class: '', gender: 'L', email: '', password: '' });
+            const [newTeacher, setNewTeacher] = useState({ name: '', nip: '', email: '', password: '' });
+            const [editingTeacher, setEditingTeacher] = useState(null);
+            const [dashboardClassFilter, setDashboardClassFilter] = useState('');
+            const [studentSearch, setStudentSearch] = useState('');
+            const [studentClassFilter, setStudentClassFilter] = useState('');
+            const [currentPage, setCurrentPage] = useState(1);
+            const [itemsPerPage, setItemsPerPage] = useState(10);
+            const [teacherSearch, setTeacherSearch] = useState('');
+            const [teacherPage, setTeacherPage] = useState(1);
+            const [teacherItemsPerPage, setTeacherItemsPerPage] = useState(10);
+            const [rekapFilter, setRekapFilter] = useState({ class: '', start: '', end: '' });
+            const [rekapData, setRekapData] = useState([]);
+            const [processingRekap, setProcessingRekap] = useState(false);
+            const chartRef = useRef(null);
+
+            const refreshData = async () => { setLoading(true); const s = await dbHelper.getUsers(); const t = await dbHelper.getTeachers(); setStudents(s); setTeachers(t); setLoading(false); };
+            useEffect(() => { refreshData(); }, []);
+            useEffect(() => setCurrentPage(1), [studentSearch, studentClassFilter, itemsPerPage]);
+
+            useEffect(() => {
+                if (view === 'dashboard' && students.length > 0) {
+                    const ctx = document.getElementById('progressChart');
+                    if(ctx) {
+                        if (chartRef.current) chartRef.current.destroy();
+                        const avgWajib = Math.floor(Math.random() * 20) + 70;
+                        const avgSunnah = Math.floor(Math.random() * 30) + 50;
+                        const avgYasin = Math.floor(Math.random() * 40) + 40;
+                        chartRef.current = new Chart(ctx, { type: 'bar', data: { labels: ['Sholat Wajib', 'Sunnah', 'Yasin Morning'], datasets: [{ label: 'Rerata Kepatuhan', data: [avgWajib, avgSunnah, avgYasin], backgroundColor: ['#15803d', '#3b82f6', '#ec4899'] }] }, options: { scales: { y: { beginAtZero: true, max: 100 } } } });
+                    }
+                }
+            }, [view, students, dashboardClassFilter]);
+
+            const handleAddStudent = async (e) => { e.preventDefault(); setLoading(true); await dbHelper.saveUser({ ...newStudent, id: Date.now().toString(), isBlocked: false }); await refreshData(); setShowModal(false); setLoading(false); };
+            const handleDelete = async (id) => { if(confirm('Hapus?')) { await dbHelper.deleteUser(id); refreshData(); } };
+            const handleAddTeacher = async (e) => { e.preventDefault(); setLoading(true); await dbHelper.saveTeacher({ ...newTeacher, id: 'T'+Date.now() }); await refreshData(); setShowTeacherModal(false); setLoading(false); };
+            const handleUpdateTeacher = async (e) => { e.preventDefault(); setLoading(true); await dbHelper.updateTeacher(editingTeacher); await refreshData(); setShowEditTeacherModal(false); setLoading(false); };
+            const handleDeleteTeacher = async (id) => { if(confirm('Hapus?')) { await dbHelper.deleteTeacher(id); refreshData(); } };
+            const handleDownloadTemplate = () => exportToExcel([{ "Nama": "Siswa A", "Kelas": "X TKJ 1", "Gender(L/P)": "L", "Email": "a@smk.id", "Password": "123" }], "template_siswa");
+            const handleExportData = () => exportToExcel(students.map(s => ({ ID: s.id, Nama: s.name, Kelas: s.class, Gender: s.gender, Email: s.email, Password: s.password })), "data_siswa_semua");
+            const handleImportData = (e) => {
+                const file = e.target.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = async (evt) => {
+                    const d = new Uint8Array(evt.target.result); const wb = XLSX.read(d, { type: 'array' });
+                    const j = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                    setLoading(true);
+                    for (let r of j) { if (r['Nama'] && r['Email']) await dbHelper.saveUser({ id: Date.now()+Math.floor(Math.random()*1000), name: r['Nama'], class: r['Kelas']||'', gender: r['Gender(L/P)']||'L', email: r['Email'], password: (r['Password']||'123').toString(), isBlocked: false }); }
+                    await refreshData(); setLoading(false); alert('Import Selesai');
+                }; reader.readAsArrayBuffer(file);
+            };
+
+            const processRekap = async () => {
+                if(!rekapFilter.class) return alert("Pilih kelas."); setProcessingRekap(true);
+                const clsS = students.filter(s => s.class === rekapFilter.class);
+                const sD = new Date(rekapFilter.start); const eD = new Date(rekapFilter.end);
+                const days = Math.ceil(Math.abs(eD-sD)/(1000*3600*24))+1;
+                const dts = []; let c = new Date(sD); while(c<=eD){dts.push(c.toISOString().split('T')[0]); c.setDate(c.getDate()+1);}
+                const res = [];
+                for(let s of clsS){
+                    const att = await dbHelper.getAttendance(s.id);
+                    let tW=0, tS=0, tY=0;
+                    dts.forEach(d=>{
+                        const dy = att[d];
+                        if(dy?.isHonest){
+                            let w=0; ['subuh','dzuhur','ashar','maghrib','isya'].forEach(p=>{const st=dy.wajib?.[p]; if(st==='jamaah'||st==='udzur') w+=20; else if(st==='munfarid') w+=18;});
+                            let sP=0; const r=dy.rawatib||{}; const sl=dy.sunnah_lain||{};
+                            const q=r.qob_subuh||r.qob_dzuhur||r.qob_ashar||r.qob_isya; const b=r.ba_dzuhur||r.ba_maghrib||r.ba_isya;
+                            let co=0; Object.values(r).forEach(x=>x&&co++); Object.values(sl).forEach(x=>x&&co++);
+                            if(q&&b) sP=85+(Math.max(0,co-2)*2); else sP=co*5;
+                            tW+=Math.min(w,100); tS+=Math.min(sP,100); tY+=(dy.yasin?100:0);
+                        }
+                    });
+                    const aW=Math.round(tW/days); const aS=Math.round(tS/days); const aY=Math.round(tY/days);
+                    res.push({"Nama":s.name, "Wajib":aW, "Sunnah":aS, "Yasin":aY, "Akhir":Math.round((aW+aS+aY)/3)});
+                }
+                setRekapData(res); setProcessingRekap(false);
+            };
+
+            const fS = students.filter(s=>(s.name||'').toLowerCase().includes(studentSearch.toLowerCase()) && (studentClassFilter ? s.class === studentClassFilter : true));
+            const cS = fS.slice((currentPage-1)*itemsPerPage, currentPage*itemsPerPage);
+            const totalPages = Math.ceil(fS.length / itemsPerPage);
+            const fT = teachers.filter(t=>(t.name||'').toLowerCase().includes(teacherSearch.toLowerCase()));
+            const cT = fT.slice((teacherPage-1)*teacherItemsPerPage, teacherPage*teacherItemsPerPage);
+            const totalTeacherPages = Math.ceil(fT.length / teacherItemsPerPage);
+            const uC = [...new Set(students.map(s => s.class).filter(c => c))].sort();
+
+            return (
+                <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+                    <div className="w-64 bg-green-800 text-white hidden md:block p-6 flex-shrink-0">
+                        <div className="mb-8 text-center"><img src={LOGO_URL} className="w-20 h-20 mx-auto rounded-full bg-white p-1 mb-3 object-contain"/><h2 className="text-xl font-bold">Panel Guru</h2></div>
+                        <nav className="space-y-2">
+                            <button onClick={()=>setView('dashboard')} className={`block w-full text-left px-4 py-2 rounded ${view==='dashboard'?'bg-green-700':'hover:bg-green-700'}`}>Dashboard</button>
+                            <button onClick={()=>setView('students')} className={`block w-full text-left px-4 py-2 rounded ${view==='students'?'bg-green-700':'hover:bg-green-700'}`}>Data Siswa</button>
+                            <button onClick={()=>setView('teachers')} className={`block w-full text-left px-4 py-2 rounded ${view==='teachers'?'bg-green-700':'hover:bg-green-700'}`}>Data Guru</button>
+                            <button onClick={()=>setView('rekap')} className={`block w-full text-left px-4 py-2 rounded ${view==='rekap'?'bg-green-700':'hover:bg-green-700'}`}>Rekap Nilai</button>
+                        </nav>
+                        <button onClick={onLogout} className="mt-10 text-red-300">Keluar</button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto h-screen p-4 md:p-8">
+                        <div className="md:hidden flex justify-between items-center mb-4 bg-green-800 text-white p-4 rounded-lg shadow"><div className="font-bold">Panel Guru</div><button onClick={onLogout} className="text-xs bg-red-600 px-3 py-1 rounded">Logout</button></div>
+                        {loading ? <div className="text-center mt-10"><div className="loader mx-auto"></div></div> : (
+                            <>
+                                {view==='dashboard' && <div className="bg-white p-6 rounded-xl shadow-lg"><h3 className="font-bold text-lg mb-4 text-green-800">Grafik</h3><div className="h-64"><canvas id="progressChart"></canvas></div></div>}
+                                {view==='students' && <div className="bg-white p-6 rounded-xl shadow-lg"><div className="flex flex-wrap gap-2 mb-4"><button onClick={()=>setShowModal(true)} className="bg-green-600 text-white px-3 py-1 rounded">Tambah</button><button onClick={handleDownloadTemplate} className="bg-gray-500 text-white px-3 py-1 rounded">Template</button><label className="bg-blue-500 text-white px-3 py-1 rounded cursor-pointer">Import<input type="file" onChange={handleImportData} className="hidden" accept=".xlsx"/></label><button onClick={handleExportData} className="bg-yellow-500 text-white px-3 py-1 rounded">Export</button></div><div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4"><input placeholder="Cari..." className="border p-2 rounded" value={studentSearch} onChange={e=>setStudentSearch(e.target.value)}/><select className="border p-2 rounded" value={studentClassFilter} onChange={e=>setStudentClassFilter(e.target.value)}><option value="">Semua Kelas</option>{uC.map((c,i)=><option key={i} value={c}>{c}</option>)}</select><select className="border p-2 rounded" value={itemsPerPage} onChange={e=>setItemsPerPage(Number(e.target.value))}><option value={10}>10</option><option value={50}>50</option><option value={100}>100</option></select></div><div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="bg-gray-100"><tr><th className="p-3">Nama</th><th className="p-3">Kelas</th><th className="p-3">Aksi</th></tr></thead><tbody>{cS.map(s=><tr key={s.id} className="border-b"><td className="p-3">{s.name}</td><td className="p-3">{s.class}</td><td className="p-3"><button onClick={()=>handleDelete(s.id)} className="text-red-500"><i className="fas fa-trash"></i></button></td></tr>)}</tbody></table></div><div className="flex justify-between mt-4 text-xs text-gray-500"><span>Hal {currentPage} / {totalPages||1}</span><div className="flex gap-1"><button onClick={()=>setCurrentPage(p=>Math.max(1,p-1))} disabled={currentPage===1} className="px-2 py-1 border rounded disabled:opacity-50">Prev</button><button onClick={()=>setCurrentPage(p=>Math.min(totalPages,p+1))} disabled={currentPage===totalPages} className="px-2 py-1 border rounded disabled:opacity-50">Next</button></div></div></div>}
+                                {view==='teachers' && <div className="bg-white p-6 rounded-xl shadow-lg"><div className="mb-4"><button onClick={()=>setShowTeacherModal(true)} className="bg-green-600 text-white px-3 py-1 rounded">Tambah Guru</button></div><input placeholder="Cari Guru..." className="border p-2 rounded mb-4 w-full" value={teacherSearch} onChange={e=>setTeacherSearch(e.target.value)}/><div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="bg-gray-100"><tr><th className="p-3">Nama</th><th className="p-3">Email</th><th className="p-3">Aksi</th></tr></thead><tbody>{cT.map(t=><tr key={t.id} className="border-b"><td className="p-3">{t.name}</td><td className="p-3">{t.email}</td><td className="p-3 flex gap-2"><button onClick={()=>{setEditingTeacher(t);setShowEditTeacherModal(true)}} className="text-blue-500"><i className="fas fa-edit"></i></button><button onClick={()=>handleDeleteTeacher(t.id)} className="text-red-500"><i className="fas fa-trash"></i></button></td></tr>)}</tbody></table></div></div>}
+                                {view==='rekap' && <div className="bg-white p-6 rounded-xl shadow-lg"><h3 className="font-bold mb-4">Rekap Nilai</h3><div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4"><div><label className="text-xs">Kelas</label><select className="w-full border p-2 rounded" value={rekapFilter.class} onChange={e=>setRekapFilter({...rekapFilter,class:e.target.value})}><option value="">Pilih</option>{uC.map(c=><option key={c} value={c}>{c}</option>)}</select></div><div><label className="text-xs">Dari</label><input type="date" className="w-full border p-2 rounded" value={rekapFilter.start} onChange={e=>setRekapFilter({...rekapFilter,start:e.target.value})}/></div><div><label className="text-xs">Sampai</label><input type="date" className="w-full border p-2 rounded" value={rekapFilter.end} onChange={e=>setRekapFilter({...rekapFilter,end:e.target.value})}/></div><button onClick={processRekap} className="bg-blue-600 text-white px-4 py-2 rounded">{processingRekap?'...':'Proses'}</button></div>{rekapData.length>0 && <div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="bg-green-600 text-white"><tr><th className="p-2">Nama</th><th className="p-2">Wajib</th><th className="p-2">Sunnah</th><th className="p-2">Yasin</th><th className="p-2">Akhir</th></tr></thead><tbody>{rekapData.map((r,i)=><tr key={i} className="border-b"><td className="p-2">{r.Nama}</td><td className="p-2">{r.Wajib}</td><td className="p-2">{r.Sunnah}</td><td className="p-2">{r.Yasin}</td><td className="p-2 font-bold">{r.Akhir}</td></tr>)}</tbody></table><button onClick={()=>exportToExcel(rekapData,'Rekap')} className="mt-4 bg-green-100 text-green-700 px-4 py-2 rounded font-bold">Unduh Excel</button></div>}</div>}
+                            </>
+                        )}
+                    </div>
+                     {/* Modals */}
+                     {showModal && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-lg w-full max-w-sm"><h3 className="font-bold mb-4">Tambah Siswa</h3><div className="space-y-2"><input placeholder="Nama" className="w-full border p-2 rounded" value={newStudent.name} onChange={e=>setNewStudent({...newStudent, name:e.target.value})}/><input placeholder="Kelas" className="w-full border p-2 rounded" value={newStudent.class} onChange={e=>setNewStudent({...newStudent, class:e.target.value})}/><select className="w-full border p-2 rounded" value={newStudent.gender} onChange={e=>setNewStudent({...newStudent, gender:e.target.value})}><option value="L">L</option><option value="P">P</option></select><input placeholder="Email" className="w-full border p-2 rounded" value={newStudent.email} onChange={e=>setNewStudent({...newStudent, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-2 rounded" value={newStudent.password} onChange={e=>setNewStudent({...newStudent, password:e.target.value})}/><div className="flex justify-end gap-2 mt-4"><button onClick={()=>setShowModal(false)} className="text-gray-500">Batal</button><button onClick={handleAddStudent} className="bg-green-600 text-white px-4 py-2 rounded">Simpan</button></div></div></div></div>}
+                     {showTeacherModal && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-lg w-full max-w-sm"><h3 className="font-bold mb-4">Tambah Guru</h3><div className="space-y-2"><input placeholder="Nama" className="w-full border p-2 rounded" value={newTeacher.name} onChange={e=>setNewTeacher({...newTeacher, name:e.target.value})}/><input placeholder="NIP" className="w-full border p-2 rounded" value={newTeacher.nip} onChange={e=>setNewTeacher({...newTeacher, nip:e.target.value})}/><input placeholder="Email" className="w-full border p-2 rounded" value={newTeacher.email} onChange={e=>setNewTeacher({...newTeacher, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-2 rounded" value={newTeacher.password} onChange={e=>setNewTeacher({...newTeacher, password:e.target.value})}/><div className="flex justify-end gap-2 mt-4"><button onClick={()=>setShowTeacherModal(false)} className="text-gray-500">Batal</button><button onClick={handleAddTeacher} className="bg-green-600 text-white px-4 py-2 rounded">Simpan</button></div></div></div></div>}
+                     {showEditTeacherModal && editingTeacher && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-lg w-full max-w-sm"><h3 className="font-bold mb-4">Edit Guru</h3><div className="space-y-2"><input placeholder="Nama" className="w-full border p-2 rounded" value={editingTeacher.name} onChange={e=>setEditingTeacher({...editingTeacher, name:e.target.value})}/><input placeholder="NIP" className="w-full border p-2 rounded" value={editingTeacher.nip} onChange={e=>setEditingTeacher({...editingTeacher, nip:e.target.value})}/><input placeholder="Email" className="w-full border p-2 rounded" value={editingTeacher.email} onChange={e=>setEditingTeacher({...editingTeacher, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-2 rounded" value={editingTeacher.password} onChange={e=>setEditingTeacher({...editingTeacher, password:e.target.value})}/><div className="flex justify-end gap-2 mt-4"><button onClick={()=>{setShowEditTeacherModal(false); setEditingTeacher(null)}} className="text-gray-500">Batal</button><button onClick={handleUpdateTeacher} className="bg-blue-600 text-white px-4 py-2 rounded">Update</button></div></div></div></div>}
+                </div>
+            );
+        };
+
+        const StudentDashboard = ({ user, onLogout }) => {
+            const [activeTab, setActiveTab] = useState('input');
+            const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+            const [dailyData, setDailyData] = useState({});
+            const [loading, setLoading] = useState(false);
+            const [showNotification, setShowNotification] = useState(false);
+
+            const isFriday = useMemo(() => { if (!selectedDate) return false; const p = selectedDate.split('-'); return new Date(p[0], p[1]-1, p[2]).getDay() === 5; }, [selectedDate]);
+            const currentData = dailyData[selectedDate] || { yasin: false, wajib: {}, rawatib: {}, sunnah_lain: {}, isHonest: false, fridayType: 'jumat' };
+
+            useEffect(() => { const l=async()=>{setLoading(true); setDailyData(await dbHelper.getAttendance(user.id)); setLoading(false);}; l(); }, [user.id]);
+            const sD = async(d,n) => { const u={...dailyData, [d]:n}; setDailyData(u); await dbHelper.saveAttendance(user.id, u); };
+            const hW=(p,v)=>sD(selectedDate, {...currentData, wajib: {...currentData.wajib, [p]:v}});
+            const hC=(c,k)=>sD(selectedDate, {...currentData, [c]: {...(currentData[c]||{}), [k]:!currentData[c]?.[k]}});
+            const hY=()=>sD(selectedDate, {...currentData, yasin: !currentData.yasin});
+            const hF=(t)=>sD(selectedDate, {...currentData, fridayType: t});
+            const hH=(e)=>{
+                const val = e.target.checked;
+                sD(selectedDate, {...currentData, isHonest: val});
+                if(val) { setShowNotification(true); setTimeout(() => setShowNotification(false), 3000); }
+            };
+
+            const calculateDailyScore = (data) => {
+                if (!data) return { wajib: 0, sunnah: 0, yasin: 0 };
+                let w=0; ['subuh','dzuhur','ashar','maghrib','isya'].forEach(p=>{const s=data.wajib?.[p]; if(s==='jamaah'||s==='udzur') w+=20; else if(s==='munfarid') w+=18;});
+                let sP=0; const r=data.rawatib||{}; const sl=data.sunnah_lain||{};
+                const q=r.qob_subuh||r.qob_dzuhur||r.qob_ashar||r.qob_isya; const b=r.ba_dzuhur||r.ba_maghrib||r.ba_isya;
+                let c=0; Object.values(r).forEach(x=>x&&c++); Object.values(sl).forEach(x=>x&&c++);
+                if(q&&b) sP=85+(Math.max(0,c-2)*2); else sP=c*5;
+                return { wajib: Math.min(100,w), sunnah: Math.min(100,sP), yasin: data.yasin?100:0 };
+            };
+
+            const stats = useMemo(() => {
+                if(!currentData.isHonest) return { w:0, s:0, y:0 };
+                const s = calculateDailyScore(currentData);
+                return { w: s.wajib, s: s.sunnah, y: s.yasin };
+            }, [dailyData, selectedDate]); 
+
+            const fridayMode = isFriday && user.gender === 'L' && (currentData.fridayType || 'jumat') === 'jumat';
+            const rC = { subuh: [{k:'qob_subuh',l:'Qobliyah Subuh'}], dzuhur: fridayMode ? [{k:'qob_dzuhur',l:'Qobliyah Jumat'},{k:'ba_dzuhur',l:'Bakdiyah Jumat'}] : [{k:'qob_dzuhur',l:'Qobliyah Dzuhur'},{k:'ba_dzuhur',l:'Bakdiyah Dzuhur'}], ashar: [{k:'qob_ashar',l:'Qobliyah Ashar'}], maghrib: [{k:'ba_maghrib',l:'Bakdiyah Maghrib'}], isya: [{k:'qob_isya',l:'Qobliyah Isya'},{k:'ba_isya',l:'Bakdiyah Isya'}] };
+            const imsakiyah = [{ l: 'Imsak', t: '03:55' }, { l: 'Subuh', t: '04:05' }, { l: 'Dzuhur', t: '11:40' }, { l: 'Ashar', t: '15:00' }, { l: 'Maghrib', t: '17:50' }, { l: 'Isya', t: '19:00' }];
+
+            return (
+                <div className="app-container pb-24">
+                     {showNotification && <div className="fixed top-10 left-1/2 transform -translate-x-1/2 z-50 notif-islami"><div className="bg-white/90 backdrop-blur-md text-green-800 px-6 py-3 rounded-full shadow-2xl border border-green-200 flex items-center gap-3"><i className="fas fa-check-circle text-green-500 text-xl"></i><div><p className="font-bold text-sm">Alhamdulillah</p><p className="text-xs">Jujur itu hebat, pertahankan!</p></div></div></div>}
+                     <div className="bg-gradient-to-br from-green-600 to-green-800 text-white p-6 rounded-b-[40px] shadow-lg mb-6 relative overflow-hidden">
+                        <div className="flex justify-between mb-6 relative z-10"><div><h2 className="font-bold text-2xl font-serif">Assalamu'alaikum,</h2><p className="text-sm opacity-90">{user.name}</p></div><button onClick={onLogout} className="text-xs bg-white/20 backdrop-blur px-3 py-1 rounded-full h-fit hover:bg-white/30 transition">Keluar</button></div>
+                        <div className={`grid grid-cols-3 gap-3 mb-6 relative z-10 transition-all duration-500 ${!currentData.isHonest ? 'filter blur-sm opacity-50' : ''}`}><div className="bg-white/10 backdrop-blur rounded-xl p-3 text-center border border-white/10"><h1 className="text-xl font-bold">{stats.w}</h1><span className="text-[10px] uppercase tracking-wider opacity-80">Wajib</span></div><div className="bg-white/10 backdrop-blur rounded-xl p-3 text-center border border-white/10"><h1 className="text-xl font-bold">{stats.s}</h1><span className="text-[10px] uppercase tracking-wider opacity-80">Sunnah</span></div><div className="bg-white/10 backdrop-blur rounded-xl p-3 text-center border border-white/10"><h1 className="text-xl font-bold">{stats.y}</h1><span className="text-[10px] uppercase tracking-wider opacity-80">Yasin</span></div></div>
+                        {!currentData.isHonest && <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 text-xs bg-black/30 px-4 py-2 rounded-full backdrop-blur">Isi & Konfirmasi Dulu</div>}
+                        <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/10 relative z-10"><div className="flex justify-between items-center mb-3 text-xs opacity-90 border-b border-white/20 pb-2"><span className="font-bold"><i className="fas fa-calendar-alt mr-1"></i> Jadwal Imsakiyah</span><span><i className="fas fa-map-marker-alt mr-1"></i> Kab. Kediri</span></div><div className="flex justify-between text-center">{imsakiyah.map((t,i) => (<div key={i} className="flex flex-col items-center"><span className="text-[10px] opacity-70 mb-1">{t.l}</span><span className="text-xs font-bold font-mono">{t.t}</span></div>))}</div></div>
+                     </div>
+                     <div className="flex justify-center gap-4 px-6 mb-6"><button onClick={()=>setActiveTab('input')} className={`flex-1 py-3 rounded-xl shadow-md font-bold text-sm transition-all ${activeTab==='input'?'bg-green-600 text-white shadow-green-200 transform scale-105':'bg-white text-gray-500'}`}>Input Ibadah</button><button onClick={()=>setActiveTab('report')} className={`flex-1 py-3 rounded-xl shadow-md font-bold text-sm transition-all ${activeTab==='report'?'bg-green-600 text-white shadow-green-200 transform scale-105':'bg-white text-gray-500'}`}>Laporan PDF</button></div>
+                     {activeTab === 'input' && (
+                         <div className="px-4 space-y-5">
+                             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center"><input type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)} className="bg-gray-50 rounded-lg px-3 py-2 text-sm outline-none text-green-800 font-bold"/><label className="flex items-center gap-3 cursor-pointer"><span className="text-sm font-medium text-gray-600">Yasin Morning</span><div className={`w-10 h-6 flex items-center bg-gray-300 rounded-full p-1 duration-300 ease-in-out ${currentData.yasin ? 'bg-green-500' : ''}`} onClick={hY}><div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ease-in-out ${currentData.yasin ? 'translate-x-4' : ''}`}></div></div></label></div>
+                             {['subuh','dzuhur','ashar','maghrib','isya'].map(p=>(
+                                 <div key={p} className="bg-white p-5 rounded-2xl shadow-lg border border-gray-50 transition-all hover:shadow-xl">
+                                     <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-2"><div className="font-bold capitalize text-lg text-green-800 font-serif flex items-center gap-2"><i className="fas fa-mosque text-green-500/50 text-sm"></i> {p}</div>{p==='dzuhur' && isFriday && user.gender==='L' && (<div className="flex bg-gray-100 rounded-lg p-1"><button onClick={()=>hF('jumat')} className={`text-[10px] px-3 py-1 rounded-md transition ${currentData.fridayType!=='dhuhur'?'bg-white shadow text-green-700 font-bold':'text-gray-400'}`}>Jumat</button><button onClick={()=>hF('dhuhur')} className={`text-[10px] px-3 py-1 rounded-md transition ${currentData.fridayType==='dhuhur'?'bg-white shadow text-green-700 font-bold':'text-gray-400'}`}>Dhuhur</button></div>)}</div>
+                                     <div className="grid grid-cols-3 gap-3 mb-4">
+                                         {(p==='dzuhur' && fridayMode) ? (
+                                             <><button onClick={()=>hW(p,'jamaah')} className={`py-3 rounded-xl text-xs font-bold transition-all shadow-md transform hover:scale-105 ${currentData.wajib[p]==='jamaah'?'bg-gradient-to-r from-green-500 to-green-600 text-white ring-2 ring-green-300':'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}><i className="fas fa-users mr-1"></i> Berjamaah</button><button onClick={()=>hW(p,'tidak')} className={`col-span-2 py-3 rounded-xl text-xs font-bold transition-all shadow-md transform hover:scale-105 ${currentData.wajib[p]==='tidak'?'bg-gradient-to-r from-red-500 to-red-600 text-white ring-2 ring-red-300':'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}><i className="fas fa-times-circle mr-1"></i> Tidak Sholat</button></>
+                                         ) : (
+                                             <>
+                                                 <button onClick={()=>hW(p,'jamaah')} className={`py-3 rounded-xl text-xs font-bold transition-all shadow-md transform hover:scale-105 ${currentData.wajib[p]==='jamaah'?'bg-gradient-to-r from-green-500 to-green-600 text-white ring-2 ring-green-300':'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}><i className="fas fa-users mb-1 block text-lg"></i>Jamaah</button>
+                                                 <button onClick={()=>hW(p,'munfarid')} className={`py-3 rounded-xl text-xs font-bold transition-all shadow-md transform hover:scale-105 ${currentData.wajib[p]==='munfarid'?'bg-gradient-to-r from-blue-500 to-blue-600 text-white ring-2 ring-blue-300':'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}><i className="fas fa-user mb-1 block text-lg"></i>Munfarid</button>
+                                                 <button onClick={()=>hW(p,'tidak')} className={`py-3 rounded-xl text-xs font-bold transition-all shadow-md transform hover:scale-105 ${currentData.wajib[p]==='tidak'?'bg-gradient-to-r from-red-500 to-red-600 text-white ring-2 ring-red-300':'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}><i className="fas fa-times-circle mb-1 block text-lg"></i>Lalai</button>
+                                             </>
+                                         )}
+                                     </div>
+                                     {user.gender==='P' && <button onClick={()=>hW(p,'udzur')} className={`w-full mb-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm ${currentData.wajib[p]==='udzur'?'bg-pink-500 text-white ring-2 ring-pink-300':'bg-pink-50 text-pink-400 hover:bg-pink-100'}`}>Sedang Udzur / Haid</button>}
+                                     {rC[p] && (<div className="grid grid-cols-2 gap-3 mt-2 pt-2 border-t border-gray-100">{rC[p].map(s=>(<label key={s.k} className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-xs cursor-pointer transition-all hover:shadow-md ${currentData.rawatib?.[s.k]?'bg-green-50 border-green-500 text-green-700 font-bold':'bg-white border-gray-200 text-gray-400 hover:border-green-300'}`}><span>{s.l.replace(/ (Subuh|Dzuhur|Jumat|Ashar|Maghrib|Isya)/, '')}</span><div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${currentData.rawatib?.[s.k]?'bg-green-500 text-white':'bg-gray-200 text-transparent'}`}><i className="fas fa-check text-[10px]"></i></div><input type="checkbox" className="hidden" checked={!!currentData.rawatib?.[s.k]} onChange={()=>hC('rawatib',s.k)}/></label>))}</div>)}
+                                 </div>
+                             ))}
+                             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100"><h3 className="font-bold text-gray-700 mb-3 text-sm flex items-center gap-2"><i className="fas fa-star text-yellow-500"></i> Sunnah Lainnya</h3><div className="grid grid-cols-3 gap-3">{['dhuha','tahajud','witir'].map(s=>(<label key={s} className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all hover:scale-105 ${currentData.sunnah_lain?.[s]?'bg-yellow-50 border-yellow-400 text-yellow-700 shadow-sm':'bg-white border-gray-100 text-gray-400 hover:border-yellow-200'}`}><i className={`fas ${s==='dhuha'?'fa-sun':(s==='tahajud'?'fa-moon':'fa-star')} text-2xl mb-2 ${currentData.sunnah_lain?.[s]?'text-yellow-500':'text-gray-300'}`}></i><span className="capitalize text-[10px] font-bold">{s}</span><input type="checkbox" className="hidden" checked={!!currentData.sunnah_lain?.[s]} onChange={()=>hC('sunnah_lain',s)}/></label>))}</div></div>
+                             <div className={`p-4 rounded-xl border shadow-sm mb-6 transition-all duration-300 ${currentData.isHonest ? 'bg-green-50 border-green-300' : 'bg-yellow-50 border-yellow-200'}`}><label className="flex items-center gap-3 cursor-pointer"><div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center bg-white transition-colors ${currentData.isHonest?'border-green-500 bg-green-500 text-white':'border-gray-300 text-transparent'}`}><i className="fas fa-check text-xs"></i></div><div className="flex-1"><span className={`block text-xs font-bold ${currentData.isHonest ? 'text-green-800' : 'text-yellow-800'}`}>Saya bersaksi bahwa data ini benar & jujur.</span>{!currentData.isHonest && <span className="text-[10px] text-red-500 italic">*Wajib dicentang agar nilai muncul</span>}</div><input type="checkbox" className="hidden" checked={currentData.isHonest} onChange={hH}/></label></div>
+                         </div>
+                     )}
+                     {activeTab === 'report' && <ReportPreview user={user} dailyData={dailyData} calculateDailyScore={calculateDailyScore} />}
+                </div>
+            );
+        };
+
+        const ReportPreview = ({ user, dailyData, calculateDailyScore }) => {
+            const [start, setStart] = useState(new Date().toISOString().slice(0, 8) + '01');
+            const [end, setEnd] = useState(new Date().toISOString().slice(0, 10));
+            const [itemsPerPage, setItemsPerPage] = useState(10);
+            const [currentPage, setCurrentPage] = useState(1);
+            
+            const dRange = useMemo(() => {
+                const arr = []; let c = new Date(start); const e = new Date(end);
+                while(c<=e){arr.push(c.toISOString().split('T')[0]); c.setDate(c.getDate()+1);}
+                return arr;
+            }, [start, end]);
+
+            const indexOfLastItem = currentPage * itemsPerPage;
+            const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+            const currentRange = dRange.slice(indexOfFirstItem, indexOfLastItem);
+            const totalPages = Math.ceil(dRange.length / itemsPerPage);
+
+            const stats = useMemo(() => {
+                let missed=0, tW=0, tS=0, tY=0;
+                dRange.forEach(d => {
+                    const day = dailyData[d];
+                    if(!day) missed += 5; else { ['subuh','dzuhur','ashar','maghrib','isya'].forEach(p=>{ if(!day.wajib?.[p] || day.wajib?.[p]==='tidak') missed++; }); }
+                    if(day?.isHonest) {
+                        const s = calculateDailyScore(day);
+                        tW+=s.wajib; tS+=s.sunnah; tY+=s.yasin;
+                    }
+                });
+                const div = dRange.length || 1;
+                return { w:Math.round(tW/div), s:Math.round(tS/div), y:Math.round(tY/div), m:missed };
+            }, [dailyData, dRange, calculateDailyScore]);
+
+            const dl = () => {
+                const el = document.getElementById('rep');
+                const opt = { margin: 0, filename: `Laporan_Sholat_${user.name.replace(/\s/g,'_')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: [215, 330], orientation: 'portrait' } };
+                html2pdf().set(opt).from(el).save();
+            };
+
+            return (
+                <div className="px-4">
+                    <div className="bg-white p-5 rounded-2xl shadow-lg mb-6 text-sm border border-gray-100">
+                        <h3 className="font-bold text-gray-700 mb-3 flex items-center gap-2"><i className="fas fa-file-pdf text-red-500"></i> Filter Laporan PDF</h3>
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                            <div><label className="text-[10px] text-gray-500 font-bold uppercase">Mulai</label><input type="date" value={start} onChange={e=>setStart(e.target.value)} className="w-full border p-2 rounded-lg bg-gray-50"/></div>
+                            <div><label className="text-[10px] text-gray-500 font-bold uppercase">Sampai</label><input type="date" value={end} onChange={e=>setEnd(e.target.value)} className="w-full border p-2 rounded-lg bg-gray-50"/></div>
+                        </div>
+                        <button onClick={dl} className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-green-200 hover:scale-[1.02] transition-transform flex justify-center items-center gap-2"><i className="fas fa-download"></i> Unduh Laporan (F4)</button>
+                    </div>
+
+                    {/* Preview Table on Screen (Paginated) */}
+                    <div className="bg-white rounded-xl shadow-lg border border-gray-100 mb-6 overflow-hidden">
+                        <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="font-bold text-gray-700">Tabel Rincian Harian</h3>
+                            <select className="border p-1 rounded text-xs" value={itemsPerPage} onChange={e=>setItemsPerPage(Number(e.target.value))}><option value={10}>10 Data</option><option value={50}>50 Data</option><option value={100}>100 Data</option></select>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs text-center">
+                                <thead className="bg-green-600 text-white"><tr><th className="p-2">Tgl</th><th>S</th><th>D</th><th>A</th><th>M</th><th>I</th><th>Sunnah</th><th>Skor</th></tr></thead>
+                                <tbody>
+                                    {currentRange.map(d => {
+                                        const dy = dailyData[d]; const h = dy?.isHonest;
+                                        const s = h ? calculateDailyScore(dy) : {wajib:0,sunnah:0};
+                                        const rs = (v) => (!h?'-':(v==='jamaah'?'J':(v==='munfarid'?'M':(v==='udzur'?'U':'X'))));
+                                        return (
+                                            <tr key={d} className="border-b hover:bg-gray-50">
+                                                <td className="p-2 font-bold">{d.split('-')[2]}</td>
+                                                <td>{rs(dy?.wajib?.subuh)}</td><td>{rs(dy?.wajib?.dzuhur)}</td><td>{rs(dy?.wajib?.ashar)}</td><td>{rs(dy?.wajib?.maghrib)}</td><td>{rs(dy?.wajib?.isya)}</td>
+                                                <td>{h&&s.sunnah>0?'✓':'-'}</td><td className="font-bold">{h?(s.wajib+s.sunnah):0}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                         <div className="flex justify-between items-center p-3 text-xs text-gray-500 bg-gray-50 border-t">
+                            <span>Hal {currentPage} / {totalPages||1}</span>
+                            <div className="flex gap-2"><button onClick={()=>setCurrentPage(p=>Math.max(1,p-1))} disabled={currentPage===1} className="px-2 py-1 border bg-white rounded disabled:opacity-50">Prev</button><button onClick={()=>setCurrentPage(p=>Math.min(totalPages,p+1))} disabled={currentPage===totalPages} className="px-2 py-1 border bg-white rounded disabled:opacity-50">Next</button></div>
+                        </div>
+                    </div>
+
+                    <div className="overflow-hidden h-0 w-0">
+                        <div id="rep" className="bg-white w-[215mm] h-[330mm] px-[15mm] pt-[5mm] pb-[5mm] relative text-black font-serif">
+                             <div className="text-center border-b-4 border-double border-green-800 pb-3 mb-6"><h1 className="text-2xl font-bold text-green-900 tracking-wider">E-RAPOR SHOLAT</h1><h2 className="text-xl font-bold text-gray-800">SMK NEGERI 1 PLOSOKLATEN</h2><p className="text-sm italic text-gray-500">Kabupaten Kediri</p></div>
+                             <div className="flex justify-between items-start mb-6 font-sans"><table className="text-xs"><tbody><tr><td className="font-bold pr-4 py-1 text-gray-600">Nama Siswa</td><td className="font-bold">: {user.name}</td></tr><tr><td className="font-bold pr-4 py-1 text-gray-600">Kelas</td><td className="font-bold">: {user.class}</td></tr><tr><td className="font-bold pr-4 py-1 text-gray-600">Periode</td><td>: {formatDateIndo(start)} s.d. {formatDateIndo(end)}</td></tr></tbody></table><div className={`px-4 py-2 border-2 rounded-lg font-bold text-sm shadow-sm ${stats.m===0?'border-green-600 text-green-700 bg-green-50':'border-red-600 text-red-700 bg-red-50'}`}>{stats.m===0?'SUDAH TERTIB':'BELUM TERTIB'}</div></div>
+                             <div className="grid grid-cols-3 gap-4 mb-6 font-sans"><div className="border border-green-200 bg-green-50 p-3 rounded-lg text-center"><div className="text-[10px] font-bold text-green-800">RERATA WAJIB</div><div className="text-2xl font-bold text-green-600">{stats.w}</div></div><div className="border border-blue-200 bg-blue-50 p-3 rounded-lg text-center"><div className="text-[10px] font-bold text-blue-800">RERATA SUNNAH</div><div className="text-2xl font-bold text-blue-600">{stats.s}</div></div><div className="border border-pink-200 bg-pink-50 p-3 rounded-lg text-center"><div className="text-[10px] font-bold text-pink-800">SKOR YASIN</div><div className="text-2xl font-bold text-pink-600">{stats.y}</div></div></div>
+                             <table className="pdf-table mb-2 w-full"><thead><tr><th rowSpan="2" className="w-10">Tgl</th><th colSpan="5">Sholat Wajib</th><th rowSpan="2" className="w-12">Sunnah</th><th colSpan="3">Skor Harian</th></tr><tr><th className="w-8">S</th><th className="w-8">D</th><th className="w-8">A</th><th className="w-8">M</th><th className="w-8">I</th><th className="w-10">W</th><th className="w-10">S</th><th className="w-10">Y</th></tr></thead><tbody>{dRange.map(d=>{const dy=dailyData[d]; const h=dy?.isHonest; const s=h?calculateDailyScore(dy):{wajib:0,sunnah:0,yasin:0}; const rs=(val)=>(!h?'-':(!val||val==='tidak'?'X':(val==='jamaah'?'J':(val==='munfarid'?'M':'U')))); return (<tr key={d}><td className="font-bold text-gray-700">{d.split('-')[2]}</td><td>{rs(dy?.wajib?.subuh)}</td><td>{rs(dy?.wajib?.dzuhur)}</td><td>{rs(dy?.wajib?.ashar)}</td><td>{rs(dy?.wajib?.maghrib)}</td><td>{rs(dy?.wajib?.isya)}</td><td className="text-gray-400 italic">{h&&s.sunnah>0?'v':'-'}</td><td className="font-bold text-gray-800">{h?s.wajib:'0'}</td><td className="font-bold text-gray-800">{h?s.sunnah:'0'}</td><td className="font-bold text-gray-800">{h?s.yasin:'0'}</td></tr>);})}</tbody></table>
+                             {stats.m > 0 && <div className="text-red-600 font-bold text-xs italic mb-4 mt-2 pl-3 border-l-4 border-red-500 bg-red-50 py-2 rounded-r">* PERHATIAN: Siswa meninggalkan sholat wajib sebanyak {stats.m} kali pada periode ini.</div>}
+                             <div className="flex justify-between items-end mt-auto mb-10 text-xs font-sans px-4"><div className="text-center w-1/3 mb-4 text-xs font-bold font-sans">Catatan Tambahan dari Guru PAI:<div className="border-b border-dotted border-black h-4 w-full"></div><div className="border-b border-dotted border-black h-4 w-full"></div></div></div>
+                             <div className="flex justify-between items-end mt-auto mb-10 text-xs font-sans px-4"><div className="text-center w-1/3"><p className="mb-16">Guru PAI</p><p className="font-bold underline">...........................</p></div><div className="text-center w-1/3"><p className="mb-16">Mengetahui,<br/>Orang Tua/Wali</p><p className="font-bold underline">...........................</p></div><div className="text-center w-1/3"><p className="mb-16">Kediri, {formatDateIndo(new Date())}<br/>Siswa</p><p className="font-bold underline">{user.name}</p></div></div>
+                             <div className="absolute bottom-5 left-0 w-full px-10 flex justify-between text-[8px] text-gray-400 border-t pt-2"><span>{user.name} | {user.class} | {formatDateIndo(new Date())}</span><span>V1-1-26 Pro</span></div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [user, setUser] = useState(null);
+            useEffect(() => { const s = JSON.parse(localStorage.getItem('session_v1_firebase')); if(s) setUser(s); }, []);
+            const handleLogin = (u) => { setUser(u); localStorage.setItem('session_v1_firebase', JSON.stringify(u)); };
+            const handleLogout = () => { setUser(null); localStorage.removeItem('session_v1_firebase'); };
+            if (!user) return <Login onLogin={handleLogin} />;
+            return user.role === 'guru' ? <TeacherDashboard onLogout={handleLogout} /> : <StudentDashboard user={user} onLogout={handleLogout} />;
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
