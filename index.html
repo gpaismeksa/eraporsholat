@@ -76,12 +76,26 @@
         @keyframes slideInUp { from { transform: translate(-50%, 100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
         .notif-islami { animation: slideInUp 0.5s ease-out forwards; }
 
-        .pdf-table { width: 100%; border-collapse: collapse; font-size: 10px; font-family: 'Times New Roman', serif; }
-        .pdf-table th, .pdf-table td { border: 1px solid #000; padding: 3px; text-align: center; }
+        .pdf-table { width: 100%; border-collapse: collapse; font-size: 8px; font-family: 'Times New Roman', serif; }
+        .pdf-table th, .pdf-table td { border: 1px solid #000; padding: 1px; text-align: center; height: 12px; }
         .pdf-table th { background-color: transparent !important; color: #000000 !important; font-weight: bold; }
         
+        /* Layout Mobile/Laptop App - Universal */
         .app-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background-color: #f9fafb; box-shadow: 0 0 30px rgba(0,0,0,0.05); position: relative; }
-        @media (min-width: 768px) { .app-container-teacher { max-width: 100%; } }
+        
+        /* Layout Khusus Guru agar Full Width di Laptop tapi Responsif di HP */
+        .teacher-layout { display: flex; flex-direction: column; min-height: 100vh; background-color: #f3f4f6; }
+        @media (min-width: 768px) {
+            .teacher-layout { flex-direction: row; }
+            .teacher-content { flex: 1; overflow-y: auto; padding: 2rem; }
+            .teacher-sidebar { width: 16rem; background-color: #166534; color: white; display: block; }
+            .mobile-nav { display: none; }
+        }
+        @media (max-width: 767px) {
+            .teacher-content { padding: 1rem; padding-bottom: 5rem; }
+            .teacher-sidebar { display: none; }
+            .mobile-nav { display: flex; }
+        }
     </style>
 </head>
 <body>
@@ -166,8 +180,8 @@
                         </div>
                         {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-sm text-center border-l-4 border-red-500">{error}</div>}
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            <div><label className="block text-sm font-medium text-gray-700">Email</label><input type="email" required className="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={email} onChange={e => setEmail(e.target.value)} /></div>
-                            <div><label className="block text-sm font-medium text-gray-700">Sandi</label><input type="password" required className="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={password} onChange={e => setPassword(e.target.value)} /></div>
+                            <div><label className="block text-sm font-medium text-gray-700">Email</label><input type="email" required className="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition" value={email} onChange={e => setEmail(e.target.value)} /></div>
+                            <div><label className="block text-sm font-medium text-gray-700">Sandi</label><input type="password" required className="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition" value={password} onChange={e => setPassword(e.target.value)} /></div>
                             <button type="submit" disabled={loading} className="w-full bg-green-700 hover:bg-green-800 text-white font-bold py-3 rounded-lg shadow-lg flex justify-center items-center">{loading ? <div className="loader w-5 h-5 border-white border-t-transparent"></div> : 'Masuk Aplikasi'}</button>
                         </form>
                         <div className="mt-8 text-center border-t border-gray-100 pt-4 space-y-1">
@@ -276,8 +290,9 @@
             const uC = [...new Set(students.map(s => s.class).filter(c => c))].sort();
 
             return (
-                <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
-                    <div className="w-64 bg-green-800 text-white hidden md:block p-6 flex-shrink-0">
+                <div className="teacher-layout">
+                    {/* Sidebar Desktop */}
+                    <div className="teacher-sidebar p-6 flex-shrink-0">
                         <div className="mb-8 text-center"><img src={LOGO_URL} className="w-20 h-20 mx-auto rounded-full bg-white p-1 mb-3 object-contain"/><h2 className="text-xl font-bold">Panel Guru</h2></div>
                         <nav className="space-y-2">
                             <button onClick={()=>setView('dashboard')} className={`block w-full text-left px-4 py-2 rounded ${view==='dashboard'?'bg-green-700':'hover:bg-green-700'}`}>Dashboard</button>
@@ -287,25 +302,94 @@
                         </nav>
                         <button onClick={onLogout} className="mt-10 text-red-300">Keluar</button>
                     </div>
-                    <div className="flex-1 overflow-y-auto h-screen p-4 md:p-8">
-                        <div className="md:hidden flex justify-between items-center mb-4 bg-green-800 text-white p-4 rounded-lg shadow"><div className="font-bold">Panel Guru</div><button onClick={onLogout} className="text-xs bg-red-600 px-3 py-1 rounded">Logout</button></div>
+                    
+                    {/* Content */}
+                    <div className="teacher-content">
+                        {/* Mobile Header */}
+                        <div className="md:hidden flex justify-between items-center mb-4 bg-green-800 text-white p-4 rounded-xl shadow-md sticky top-0 z-20">
+                            <div className="font-bold flex items-center gap-2"><i className="fas fa-mosque"></i> Panel Guru</div>
+                            <button onClick={onLogout} className="text-xs bg-red-600 px-3 py-1 rounded-full shadow">Logout</button>
+                        </div>
+
                         {loading ? <div className="text-center mt-10"><div className="loader mx-auto"></div></div> : (
                             <>
-                                {view==='dashboard' && <div className="bg-white p-6 rounded-xl shadow-lg"><h3 className="font-bold text-lg mb-4 text-green-800">Grafik</h3><div className="h-64"><canvas id="progressChart"></canvas></div></div>}
-                                {view==='students' && <div className="bg-white p-6 rounded-xl shadow-lg"><div className="flex flex-wrap gap-2 mb-4"><button onClick={()=>setShowModal(true)} className="bg-green-600 text-white px-3 py-1 rounded">Tambah</button><button onClick={handleDownloadTemplate} className="bg-gray-500 text-white px-3 py-1 rounded">Template</button><label className="bg-blue-500 text-white px-3 py-1 rounded cursor-pointer">Import<input type="file" onChange={handleImportData} className="hidden" accept=".xlsx"/></label><button onClick={handleExportData} className="bg-yellow-500 text-white px-3 py-1 rounded">Export</button></div><div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4"><input placeholder="Cari..." className="border p-2 rounded" value={studentSearch} onChange={e=>setStudentSearch(e.target.value)}/><select className="border p-2 rounded" value={studentClassFilter} onChange={e=>setStudentClassFilter(e.target.value)}><option value="">Semua Kelas</option>{uC.map((c,i)=><option key={i} value={c}>{c}</option>)}</select><select className="border p-2 rounded" value={itemsPerPage} onChange={e=>setItemsPerPage(Number(e.target.value))}><option value={10}>10</option><option value={50}>50</option><option value={100}>100</option></select></div><div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="bg-gray-100"><tr><th className="p-3">Nama</th><th className="p-3">Kelas</th><th className="p-3">Aksi</th></tr></thead><tbody>{cS.map(s=><tr key={s.id} className="border-b"><td className="p-3">{s.name}</td><td className="p-3">{s.class}</td><td className="p-3"><button onClick={()=>handleDelete(s.id)} className="text-red-500"><i className="fas fa-trash"></i></button></td></tr>)}</tbody></table></div><div className="flex justify-between mt-4 text-xs text-gray-500"><span>Hal {currentPage} / {totalPages||1}</span><div className="flex gap-1"><button onClick={()=>setCurrentPage(p=>Math.max(1,p-1))} disabled={currentPage===1} className="px-2 py-1 border rounded disabled:opacity-50">Prev</button><button onClick={()=>setCurrentPage(p=>Math.min(totalPages,p+1))} disabled={currentPage===totalPages} className="px-2 py-1 border rounded disabled:opacity-50">Next</button></div></div></div>}
-                                {view==='teachers' && <div className="bg-white p-6 rounded-xl shadow-lg"><div className="mb-4"><button onClick={()=>setShowTeacherModal(true)} className="bg-green-600 text-white px-3 py-1 rounded">Tambah Guru</button></div><input placeholder="Cari Guru..." className="border p-2 rounded mb-4 w-full" value={teacherSearch} onChange={e=>setTeacherSearch(e.target.value)}/><div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="bg-gray-100"><tr><th className="p-3">Nama</th><th className="p-3">Email</th><th className="p-3">Aksi</th></tr></thead><tbody>{cT.map(t=><tr key={t.id} className="border-b"><td className="p-3">{t.name}</td><td className="p-3">{t.email}</td><td className="p-3 flex gap-2"><button onClick={()=>{setEditingTeacher(t);setShowEditTeacherModal(true)}} className="text-blue-500"><i className="fas fa-edit"></i></button><button onClick={()=>handleDeleteTeacher(t.id)} className="text-red-500"><i className="fas fa-trash"></i></button></td></tr>)}</tbody></table></div></div>}
-                                {view==='rekap' && <div className="bg-white p-6 rounded-xl shadow-lg"><h3 className="font-bold mb-4">Rekap Nilai</h3><div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4"><div><label className="text-xs">Kelas</label><select className="w-full border p-2 rounded" value={rekapFilter.class} onChange={e=>setRekapFilter({...rekapFilter,class:e.target.value})}><option value="">Pilih</option>{uC.map(c=><option key={c} value={c}>{c}</option>)}</select></div><div><label className="text-xs">Dari</label><input type="date" className="w-full border p-2 rounded" value={rekapFilter.start} onChange={e=>setRekapFilter({...rekapFilter,start:e.target.value})}/></div><div><label className="text-xs">Sampai</label><input type="date" className="w-full border p-2 rounded" value={rekapFilter.end} onChange={e=>setRekapFilter({...rekapFilter,end:e.target.value})}/></div><button onClick={processRekap} className="bg-blue-600 text-white px-4 py-2 rounded">{processingRekap?'...':'Proses'}</button></div>{rekapData.length>0 && <div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="bg-green-600 text-white"><tr><th className="p-2">Nama</th><th className="p-2">Wajib</th><th className="p-2">Sunnah</th><th className="p-2">Yasin</th><th className="p-2">Akhir</th></tr></thead><tbody>{rekapData.map((r,i)=><tr key={i} className="border-b"><td className="p-2">{r.Nama}</td><td className="p-2">{r.Wajib}</td><td className="p-2">{r.Sunnah}</td><td className="p-2">{r.Yasin}</td><td className="p-2 font-bold">{r.Akhir}</td></tr>)}</tbody></table><button onClick={()=>exportToExcel(rekapData,'Rekap')} className="mt-4 bg-green-100 text-green-700 px-4 py-2 rounded font-bold">Unduh Excel</button></div>}</div>}
+                                {view==='dashboard' && <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100"><h3 className="font-bold text-lg mb-4 text-green-800">Grafik Perkembangan</h3><select className="border p-2 rounded-lg mb-4 w-full md:w-auto bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-green-500" value={dashboardClassFilter} onChange={e=>setDashboardClassFilter(e.target.value)}><option value="">Semua Kelas</option>{uC.map((c,i)=><option key={i} value={c}>{c}</option>)}</select><div className="h-64"><canvas id="progressChart"></canvas></div></div>}
+                                
+                                {view==='students' && <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100">
+                                    <div className="flex flex-col md:flex-row justify-between gap-3 mb-4">
+                                        <div className="flex gap-2 overflow-x-auto pb-1">
+                                            <button onClick={()=>setShowModal(true)} className="bg-green-600 text-white px-3 py-2 rounded-lg text-sm shadow hover:bg-green-700 whitespace-nowrap"><i className="fas fa-plus"></i></button>
+                                            <button onClick={handleDownloadTemplate} className="bg-gray-500 text-white px-3 py-2 rounded-lg text-sm shadow hover:bg-gray-600 whitespace-nowrap"><i className="fas fa-file-excel"></i> Template</button>
+                                            <label className="bg-blue-500 text-white px-3 py-2 rounded-lg text-sm shadow hover:bg-blue-600 cursor-pointer whitespace-nowrap"><i className="fas fa-file-upload"></i> Import<input type="file" onChange={handleImportData} className="hidden" accept=".xlsx"/></label>
+                                            <button onClick={handleExportData} className="bg-yellow-500 text-white px-3 py-2 rounded-lg text-sm shadow hover:bg-yellow-600 whitespace-nowrap"><i className="fas fa-file-download"></i> Export</button>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                                        <input placeholder="Cari Siswa..." className="border p-2 rounded-lg text-sm bg-gray-50 w-full outline-none focus:ring-1 focus:ring-green-500" value={studentSearch} onChange={e=>setStudentSearch(e.target.value)}/>
+                                        <select className="border p-2 rounded-lg text-sm bg-gray-50 w-full outline-none focus:ring-1 focus:ring-green-500" value={studentClassFilter} onChange={e=>setStudentClassFilter(e.target.value)}><option value="">Semua Kelas</option>{uC.map((c,i)=><option key={i} value={c}>{c}</option>)}</select>
+                                        <select className="border p-2 rounded-lg text-sm bg-gray-50 w-full outline-none focus:ring-1 focus:ring-green-500" value={itemsPerPage} onChange={e=>setItemsPerPage(Number(e.target.value))}><option value={10}>10 Data</option><option value={50}>50 Data</option></select>
+                                    </div>
+                                    <div className="overflow-x-auto rounded-lg border border-gray-100">
+                                        <table className="w-full text-sm text-left whitespace-nowrap">
+                                            <thead className="bg-green-50 text-green-800"><tr><th className="p-3">Nama</th><th className="p-3">Kelas</th><th className="p-3">Email</th><th className="p-3">Aksi</th></tr></thead>
+                                            <tbody className="divide-y divide-gray-100">{cS.map(s=><tr key={s.id} className="hover:bg-gray-50"><td className="p-3 font-medium">{s.name}</td><td className="p-3">{s.class}</td><td className="p-3 text-gray-500">{s.email}</td><td className="p-3"><button onClick={()=>handleDelete(s.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-full transition"><i className="fas fa-trash"></i></button></td></tr>)}</tbody>
+                                        </table>
+                                    </div>
+                                    <div className="flex justify-between items-center mt-4 text-xs text-gray-500"><span>Hal {currentPage} / {totalPages||1}</span><div className="flex gap-2"><button onClick={()=>setCurrentPage(p=>Math.max(1,p-1))} disabled={currentPage===1} className="px-3 py-1 border rounded-lg bg-white disabled:opacity-50">Prev</button><button onClick={()=>setCurrentPage(p=>Math.min(totalPages,p+1))} disabled={currentPage===totalPages} className="px-3 py-1 border rounded-lg bg-white disabled:opacity-50">Next</button></div></div>
+                                </div>}
+                                
+                                {view==='teachers' && <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100">
+                                    <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-gray-700">Data Guru</h3><button onClick={()=>setShowTeacherModal(true)} className="bg-green-600 text-white px-3 py-2 rounded-lg text-sm shadow hover:bg-green-700"><i className="fas fa-plus mr-1"></i> Guru Baru</button></div>
+                                    <div className="mb-4"><input placeholder="Cari Guru..." className="border p-2 rounded-lg text-sm bg-gray-50 w-full outline-none focus:ring-1 focus:ring-green-500" value={teacherSearch} onChange={e=>setTeacherSearch(e.target.value)}/></div>
+                                    <div className="overflow-x-auto rounded-lg border border-gray-100">
+                                        <table className="w-full text-sm text-left whitespace-nowrap">
+                                            <thead className="bg-green-50 text-green-800"><tr><th className="p-3">Nama</th><th className="p-3">Email</th><th className="p-3">Aksi</th></tr></thead>
+                                            <tbody className="divide-y divide-gray-100">{cT.map(t=><tr key={t.id} className="hover:bg-gray-50"><td className="p-3 font-medium">{t.name}</td><td className="p-3 text-gray-500">{t.email}</td><td className="p-3 flex gap-2"><button onClick={()=>{setEditingTeacher(t);setShowEditTeacherModal(true)}} className="text-blue-500 hover:bg-blue-50 p-2 rounded-full"><i className="fas fa-edit"></i></button><button onClick={()=>handleDeleteTeacher(t.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-full"><i className="fas fa-trash"></i></button></td></tr>)}</tbody>
+                                        </table>
+                                    </div>
+                                </div>}
+
+                                {view==='rekap' && <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100">
+                                    <h3 className="font-bold mb-4 text-gray-700">Rekapitulasi Nilai</h3>
+                                    <div className="grid grid-cols-1 gap-3 mb-4">
+                                        <div><label className="text-xs text-gray-500 mb-1 block">Kelas</label><select className="w-full border p-2 rounded-lg text-sm bg-gray-50" value={rekapFilter.class} onChange={e=>setRekapFilter({...rekapFilter,class:e.target.value})}><option value="">Pilih Kelas</option>{uC.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div><label className="text-xs text-gray-500 mb-1 block">Dari</label><input type="date" className="w-full border p-2 rounded-lg text-sm bg-gray-50" value={rekapFilter.start} onChange={e=>setRekapFilter({...rekapFilter,start:e.target.value})}/></div>
+                                            <div><label className="text-xs text-gray-500 mb-1 block">Sampai</label><input type="date" className="w-full border p-2 rounded-lg text-sm bg-gray-50" value={rekapFilter.end} onChange={e=>setRekapFilter({...rekapFilter,end:e.target.value})}/></div>
+                                        </div>
+                                        <button onClick={processRekap} className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition">{processingRekap?'Memproses...':'Tampilkan Data'}</button>
+                                    </div>
+                                    {rekapData.length>0 && <div className="mt-4 border-t border-gray-100 pt-4">
+                                        <div className="flex justify-between items-center mb-3"><h4 className="font-bold text-sm">Hasil</h4><button onClick={()=>exportToExcel(rekapData,'Rekap')} className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-lg font-bold"><i className="fas fa-download mr-1"></i> Excel</button></div>
+                                        <div className="overflow-x-auto rounded-lg border border-gray-100">
+                                            <table className="w-full text-sm text-left whitespace-nowrap">
+                                                <thead className="bg-green-600 text-white text-xs"><tr><th className="p-2">Nama</th><th className="p-2 text-center">Wajib</th><th className="p-2 text-center">Sunnah</th><th className="p-2 text-center">Yasin</th><th className="p-2 text-center">Akhir</th></tr></thead>
+                                                <tbody className="divide-y divide-gray-100">{rekapData.map((r,i)=><tr key={i} className="hover:bg-gray-50"><td className="p-2 text-xs font-medium">{r.Nama}</td><td className="p-2 text-center text-xs">{r.Wajib}</td><td className="p-2 text-center text-xs">{r.Sunnah}</td><td className="p-2 text-center text-xs">{r.Yasin}</td><td className="p-2 text-center text-xs font-bold text-green-700">{r.Akhir}</td></tr>)}</tbody>
+                                            </table>
+                                        </div>
+                                    </div>}
+                                </div>}
                             </>
                         )}
                     </div>
-                     {/* Modals */}
-                     {showModal && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-lg w-full max-w-sm"><h3 className="font-bold mb-4">Tambah Siswa</h3><div className="space-y-2"><input placeholder="Nama" className="w-full border p-2 rounded" value={newStudent.name} onChange={e=>setNewStudent({...newStudent, name:e.target.value})}/><input placeholder="Kelas" className="w-full border p-2 rounded" value={newStudent.class} onChange={e=>setNewStudent({...newStudent, class:e.target.value})}/><select className="w-full border p-2 rounded" value={newStudent.gender} onChange={e=>setNewStudent({...newStudent, gender:e.target.value})}><option value="L">L</option><option value="P">P</option></select><input placeholder="Email" className="w-full border p-2 rounded" value={newStudent.email} onChange={e=>setNewStudent({...newStudent, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-2 rounded" value={newStudent.password} onChange={e=>setNewStudent({...newStudent, password:e.target.value})}/><div className="flex justify-end gap-2 mt-4"><button onClick={()=>setShowModal(false)} className="text-gray-500">Batal</button><button onClick={handleAddStudent} className="bg-green-600 text-white px-4 py-2 rounded">Simpan</button></div></div></div></div>}
-                     {showTeacherModal && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-lg w-full max-w-sm"><h3 className="font-bold mb-4">Tambah Guru</h3><div className="space-y-2"><input placeholder="Nama" className="w-full border p-2 rounded" value={newTeacher.name} onChange={e=>setNewTeacher({...newTeacher, name:e.target.value})}/><input placeholder="NIP" className="w-full border p-2 rounded" value={newTeacher.nip} onChange={e=>setNewTeacher({...newTeacher, nip:e.target.value})}/><input placeholder="Email" className="w-full border p-2 rounded" value={newTeacher.email} onChange={e=>setNewTeacher({...newTeacher, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-2 rounded" value={newTeacher.password} onChange={e=>setNewTeacher({...newTeacher, password:e.target.value})}/><div className="flex justify-end gap-2 mt-4"><button onClick={()=>setShowTeacherModal(false)} className="text-gray-500">Batal</button><button onClick={handleAddTeacher} className="bg-green-600 text-white px-4 py-2 rounded">Simpan</button></div></div></div></div>}
-                     {showEditTeacherModal && editingTeacher && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-lg w-full max-w-sm"><h3 className="font-bold mb-4">Edit Guru</h3><div className="space-y-2"><input placeholder="Nama" className="w-full border p-2 rounded" value={editingTeacher.name} onChange={e=>setEditingTeacher({...editingTeacher, name:e.target.value})}/><input placeholder="NIP" className="w-full border p-2 rounded" value={editingTeacher.nip} onChange={e=>setEditingTeacher({...editingTeacher, nip:e.target.value})}/><input placeholder="Email" className="w-full border p-2 rounded" value={editingTeacher.email} onChange={e=>setEditingTeacher({...editingTeacher, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-2 rounded" value={editingTeacher.password} onChange={e=>setEditingTeacher({...editingTeacher, password:e.target.value})}/><div className="flex justify-end gap-2 mt-4"><button onClick={()=>{setShowEditTeacherModal(false); setEditingTeacher(null)}} className="text-gray-500">Batal</button><button onClick={handleUpdateTeacher} className="bg-blue-600 text-white px-4 py-2 rounded">Update</button></div></div></div></div>}
+                    
+                    {/* Mobile Bottom Nav (Fixed) */}
+                    <div className="mobile-nav fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 justify-around p-2 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-safe">
+                         <button onClick={()=>setView('dashboard')} className={`flex flex-col items-center w-1/4 py-1 rounded-lg transition ${view==='dashboard'?'text-green-600 bg-green-50':'text-gray-400'}`}><i className="fas fa-chart-pie text-lg mb-1"></i><span className="text-[10px] font-medium">Home</span></button>
+                         <button onClick={()=>setView('students')} className={`flex flex-col items-center w-1/4 py-1 rounded-lg transition ${view==='students'?'text-green-600 bg-green-50':'text-gray-400'}`}><i className="fas fa-user-graduate text-lg mb-1"></i><span className="text-[10px] font-medium">Siswa</span></button>
+                         <button onClick={()=>setView('teachers')} className={`flex flex-col items-center w-1/4 py-1 rounded-lg transition ${view==='teachers'?'text-green-600 bg-green-50':'text-gray-400'}`}><i className="fas fa-chalkboard-teacher text-lg mb-1"></i><span className="text-[10px] font-medium">Guru</span></button>
+                         <button onClick={()=>setView('rekap')} className={`flex flex-col items-center w-1/4 py-1 rounded-lg transition ${view==='rekap'?'text-green-600 bg-green-50':'text-gray-400'}`}><i className="fas fa-file-invoice text-lg mb-1"></i><span className="text-[10px] font-medium">Nilai</span></button>
+                    </div>
+
+                    {/* Modals (Responsive) */}
+                    {showModal && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl transform transition-all scale-100"><h3 className="font-bold mb-4 text-lg text-gray-800">Tambah Siswa</h3><div className="space-y-3"><input placeholder="Nama Lengkap" className="w-full border p-3 rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-green-500 text-sm" value={newStudent.name} onChange={e=>setNewStudent({...newStudent, name:e.target.value})}/><input placeholder="Kelas" className="w-full border p-3 rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-green-500 text-sm" value={newStudent.class} onChange={e=>setNewStudent({...newStudent, class:e.target.value})}/><select className="w-full border p-3 rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-green-500 text-sm" value={newStudent.gender} onChange={e=>setNewStudent({...newStudent, gender:e.target.value})}><option value="L">Laki-laki</option><option value="P">Perempuan</option></select><input placeholder="Email" className="w-full border p-3 rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-green-500 text-sm" value={newStudent.email} onChange={e=>setNewStudent({...newStudent, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-3 rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-green-500 text-sm" value={newStudent.password} onChange={e=>setNewStudent({...newStudent, password:e.target.value})}/><div className="flex justify-end gap-2 mt-6"><button onClick={()=>setShowModal(false)} className="px-4 py-2 text-gray-500 font-medium text-sm">Batal</button><button onClick={handleAddStudent} className="bg-green-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-green-200 text-sm">Simpan</button></div></div></div></div>}
+                    {showTeacherModal && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl"><h3 className="font-bold mb-4 text-lg text-gray-800">Tambah Guru</h3><div className="space-y-3"><input placeholder="Nama" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newTeacher.name} onChange={e=>setNewTeacher({...newTeacher, name:e.target.value})}/><input placeholder="NIP" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newTeacher.nip} onChange={e=>setNewTeacher({...newTeacher, nip:e.target.value})}/><input placeholder="Email" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newTeacher.email} onChange={e=>setNewTeacher({...newTeacher, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newTeacher.password} onChange={e=>setNewTeacher({...newTeacher, password:e.target.value})}/><div className="flex justify-end gap-2 mt-6"><button onClick={()=>setShowTeacherModal(false)} className="text-gray-500 text-sm">Batal</button><button onClick={handleAddTeacher} className="bg-green-600 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg">Simpan</button></div></div></div></div>}
+                    {showEditTeacherModal && editingTeacher && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl"><h3 className="font-bold mb-4 text-lg text-gray-800">Edit Guru</h3><div className="space-y-3"><input placeholder="Nama" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={editingTeacher.name} onChange={e=>setEditingTeacher({...editingTeacher, name:e.target.value})}/><input placeholder="NIP" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={editingTeacher.nip} onChange={e=>setEditingTeacher({...editingTeacher, nip:e.target.value})}/><input placeholder="Email" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={editingTeacher.email} onChange={e=>setEditingTeacher({...editingTeacher, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={editingTeacher.password} onChange={e=>setEditingTeacher({...editingTeacher, password:e.target.value})}/><div className="flex justify-end gap-2 mt-6"><button onClick={()=>{setShowEditTeacherModal(false); setEditingTeacher(null)}} className="text-gray-500 text-sm">Batal</button><button onClick={handleUpdateTeacher} className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg">Update</button></div></div></div></div>}
                 </div>
             );
         };
-
+        
+        // ... (StudentDashboard, ReportPreview, App components remains largely the same logic, ensure they are included in final file) ...
         const StudentDashboard = ({ user, onLogout }) => {
             const [activeTab, setActiveTab] = useState('input');
             const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -421,7 +505,8 @@
 
             const dl = () => {
                 const el = document.getElementById('rep');
-                const opt = { margin: 0, filename: `Laporan_Sholat_${user.name.replace(/\s/g,'_')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: [215, 330], orientation: 'portrait' } };
+                // FORCE SCROLL TO TOP to avoid cut off
+                const opt = { margin: 0, filename: `Laporan_${user.name.replace(/\s/g,'_')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, scrollY: 0 }, jsPDF: { unit: 'mm', format: [215, 330], orientation: 'portrait' } };
                 html2pdf().set(opt).from(el).save();
             };
 
@@ -468,14 +553,72 @@
                     </div>
 
                     <div className="overflow-hidden h-0 w-0">
-                        <div id="rep" className="bg-white w-[215mm] h-[330mm] px-[15mm] pt-[5mm] pb-[5mm] relative text-black font-serif">
-                             <div className="text-center border-b-4 border-double border-green-800 pb-3 mb-6"><h1 className="text-2xl font-bold text-green-900 tracking-wider">E-RAPOR SHOLAT</h1><h2 className="text-xl font-bold text-gray-800">SMK NEGERI 1 PLOSOKLATEN</h2><p className="text-sm italic text-gray-500">Kabupaten Kediri</p></div>
-                             <div className="flex justify-between items-start mb-6 font-sans"><table className="text-xs"><tbody><tr><td className="font-bold pr-4 py-1 text-gray-600">Nama Siswa</td><td className="font-bold">: {user.name}</td></tr><tr><td className="font-bold pr-4 py-1 text-gray-600">Kelas</td><td className="font-bold">: {user.class}</td></tr><tr><td className="font-bold pr-4 py-1 text-gray-600">Periode</td><td>: {formatDateIndo(start)} s.d. {formatDateIndo(end)}</td></tr></tbody></table><div className={`px-4 py-2 border-2 rounded-lg font-bold text-sm shadow-sm ${stats.m===0?'border-green-600 text-green-700 bg-green-50':'border-red-600 text-red-700 bg-red-50'}`}>{stats.m===0?'SUDAH TERTIB':'BELUM TERTIB'}</div></div>
-                             <div className="grid grid-cols-3 gap-4 mb-6 font-sans"><div className="border border-green-200 bg-green-50 p-3 rounded-lg text-center"><div className="text-[10px] font-bold text-green-800">RERATA WAJIB</div><div className="text-2xl font-bold text-green-600">{stats.w}</div></div><div className="border border-blue-200 bg-blue-50 p-3 rounded-lg text-center"><div className="text-[10px] font-bold text-blue-800">RERATA SUNNAH</div><div className="text-2xl font-bold text-blue-600">{stats.s}</div></div><div className="border border-pink-200 bg-pink-50 p-3 rounded-lg text-center"><div className="text-[10px] font-bold text-pink-800">SKOR YASIN</div><div className="text-2xl font-bold text-pink-600">{stats.y}</div></div></div>
-                             <table className="pdf-table mb-2 w-full"><thead><tr><th rowSpan="2" className="w-10">Tgl</th><th colSpan="5">Sholat Wajib</th><th rowSpan="2" className="w-12">Sunnah</th><th colSpan="3">Skor Harian</th></tr><tr><th className="w-8">S</th><th className="w-8">D</th><th className="w-8">A</th><th className="w-8">M</th><th className="w-8">I</th><th className="w-10">W</th><th className="w-10">S</th><th className="w-10">Y</th></tr></thead><tbody>{dRange.map(d=>{const dy=dailyData[d]; const h=dy?.isHonest; const s=h?calculateDailyScore(dy):{wajib:0,sunnah:0,yasin:0}; const rs=(val)=>(!h?'-':(!val||val==='tidak'?'X':(val==='jamaah'?'J':(val==='munfarid'?'M':'U')))); return (<tr key={d}><td className="font-bold text-gray-700">{d.split('-')[2]}</td><td>{rs(dy?.wajib?.subuh)}</td><td>{rs(dy?.wajib?.dzuhur)}</td><td>{rs(dy?.wajib?.ashar)}</td><td>{rs(dy?.wajib?.maghrib)}</td><td>{rs(dy?.wajib?.isya)}</td><td className="text-gray-400 italic">{h&&s.sunnah>0?'v':'-'}</td><td className="font-bold text-gray-800">{h?s.wajib:'0'}</td><td className="font-bold text-gray-800">{h?s.sunnah:'0'}</td><td className="font-bold text-gray-800">{h?s.yasin:'0'}</td></tr>);})}</tbody></table>
-                             {stats.m > 0 && <div className="text-red-600 font-bold text-xs italic mb-4 mt-2 pl-3 border-l-4 border-red-500 bg-red-50 py-2 rounded-r">* PERHATIAN: Siswa meninggalkan sholat wajib sebanyak {stats.m} kali pada periode ini.</div>}
-                             <div className="flex justify-between items-end mt-auto mb-10 text-xs font-sans px-4"><div className="text-center w-1/3 mb-4 text-xs font-bold font-sans">Catatan Tambahan dari Guru PAI:<div className="border-b border-dotted border-black h-4 w-full"></div><div className="border-b border-dotted border-black h-4 w-full"></div></div></div>
-                             <div className="flex justify-between items-end mt-auto mb-10 text-xs font-sans px-4"><div className="text-center w-1/3"><p className="mb-16">Guru PAI</p><p className="font-bold underline">...........................</p></div><div className="text-center w-1/3"><p className="mb-16">Mengetahui,<br/>Orang Tua/Wali</p><p className="font-bold underline">...........................</p></div><div className="text-center w-1/3"><p className="mb-16">Kediri, {formatDateIndo(new Date())}<br/>Siswa</p><p className="font-bold underline">{user.name}</p></div></div>
+                        {/* PDF Container - F4 Size, Flex Layout, Reduced Padding to move up */}
+                        <div id="rep" className="bg-white w-[215mm] h-[330mm] px-[15mm] pt-[5mm] pb-[5mm] relative text-black font-serif flex flex-col">
+                             {/* Header */}
+                             <div className="text-center border-b-4 border-double border-green-800 pb-2 mb-2 shrink-0">
+                                <h1 className="text-2xl font-bold text-green-900 tracking-wider m-0">E-RAPOR SHOLAT</h1>
+                                <h2 className="text-xl font-bold text-gray-800 m-0">SMK NEGERI 1 PLOSOKLATEN</h2>
+                                <p className="text-sm italic text-gray-500 m-0">Kabupaten Kediri</p>
+                             </div>
+
+                             {/* Info */}
+                             <div className="flex justify-between items-start mb-2 font-sans shrink-0">
+                                <table className="text-xs">
+                                    <tbody>
+                                        <tr><td className="font-bold pr-4 py-1 text-gray-600">Nama Siswa</td><td className="font-bold">: {user.name}</td></tr>
+                                        <tr><td className="font-bold pr-4 py-1 text-gray-600">Kelas</td><td className="font-bold">: {user.class}</td></tr>
+                                        <tr><td className="font-bold pr-4 py-1 text-gray-600">Periode</td><td>: {formatDateIndo(start)} s.d. {formatDateIndo(end)}</td></tr>
+                                    </tbody>
+                                </table>
+                                <div className={`px-4 py-2 border-2 rounded-lg font-bold text-sm shadow-sm ${stats.m===0?'border-green-600 text-green-700 bg-green-50':'border-red-600 text-red-700 bg-red-50'}`}>{stats.m===0?'SUDAH TERTIB':'BELUM TERTIB'}</div>
+                             </div>
+
+                             {/* Summary */}
+                             <div className="grid grid-cols-3 gap-4 mb-2 font-sans shrink-0">
+                                 <div className="border border-green-200 bg-green-50 p-2 rounded-lg text-center"><div className="text-[10px] font-bold text-green-800">RERATA WAJIB</div><div className="text-xl font-bold text-green-600">{stats.w}</div></div>
+                                 <div className="border border-blue-200 bg-blue-50 p-2 rounded-lg text-center"><div className="text-[10px] font-bold text-blue-800">RERATA SUNNAH</div><div className="text-xl font-bold text-blue-600">{stats.s}</div></div>
+                                 <div className="border border-pink-200 bg-pink-50 p-2 rounded-lg text-center"><div className="text-[10px] font-bold text-pink-800">SKOR YASIN</div><div className="text-xl font-bold text-pink-600">{stats.y}</div></div>
+                             </div>
+
+                             {/* Table Content - Auto Expand */}
+                             <div className="flex-1">
+                                 <table className="pdf-table w-full">
+                                     <thead>
+                                         <tr><th rowSpan="2" className="w-10">Tgl</th><th colSpan="5">Sholat Wajib</th><th rowSpan="2" className="w-12">Sunnah</th><th colSpan="3">Skor Harian</th></tr>
+                                         <tr><th className="w-8">S</th><th className="w-8">D</th><th className="w-8">A</th><th className="w-8">M</th><th className="w-8">I</th><th className="w-10">W</th><th className="w-10">S</th><th className="w-10">Y</th></tr>
+                                     </thead>
+                                     <tbody>
+                                        {dRange.map(d => {
+                                            const dy = dailyData[d];
+                                            const h = dy?.isHonest;
+                                            const s = h ? calculateDailyScore(dy) : {wajib:0,sunnah:0,yasin:0};
+                                            const rs = (val) => (!h?'-':(!val||val==='tidak'?'X':(val==='jamaah'?'J':(val==='munfarid'?'M':'U'))));
+                                            return (
+                                                <tr key={d}>
+                                                    <td className="font-bold text-gray-700">{d.split('-')[2]}</td>
+                                                    <td>{rs(dy?.wajib?.subuh)}</td><td>{rs(dy?.wajib?.dzuhur)}</td><td>{rs(dy?.wajib?.ashar)}</td><td>{rs(dy?.wajib?.maghrib)}</td><td>{rs(dy?.wajib?.isya)}</td>
+                                                    <td className="text-gray-400 italic">{h && s.sunnah>0 ? 'v' : '-'}</td>
+                                                    <td className="font-bold text-gray-800">{h ? s.wajib : '0'}</td><td className="font-bold text-gray-800">{h ? s.sunnah : '0'}</td><td className="font-bold text-gray-800">{h ? s.yasin : '0'}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                     </tbody>
+                                 </table>
+                                 {stats.m > 0 && <div className="text-red-600 font-bold text-xs italic mt-2 pl-3 border-l-4 border-red-500 bg-red-50 py-1 rounded-r">* PERHATIAN: Siswa meninggalkan sholat wajib sebanyak {stats.m} kali pada periode ini.</div>}
+                             </div>
+
+                             {/* Bottom Section - Pushed to bottom via Flex */}
+                             <div className="shrink-0 mt-2">
+                                 <div className="mb-4 text-xs font-sans px-4"><div className="font-bold mb-1">Catatan Tambahan dari Guru PAI:</div><div className="border-b border-dotted border-black h-4 w-full"></div><div className="border-b border-dotted border-black h-4 w-full"></div></div>
+                                 <div className="flex justify-between items-end mb-4 text-xs font-sans px-4 text-center">
+                                     <div className="w-1/3"><p className="mb-12">Guru PAI</p><p className="font-bold underline">...........................</p></div>
+                                     <div className="w-1/3"><p className="mb-12">Mengetahui,<br/>Orang Tua/Wali</p><p className="font-bold underline">...........................</p></div>
+                                     <div className="w-1/3"><p className="mb-12">Kediri, {formatDateIndo(new Date())}<br/>Siswa</p><p className="font-bold underline">{user.name}</p></div>
+                                 </div>
+                             </div>
+
+                             {/* Footnote - Absolute Bottom */}
                              <div className="absolute bottom-5 left-0 w-full px-10 flex justify-between text-[8px] text-gray-400 border-t pt-2"><span>{user.name} | {user.class} | {formatDateIndo(new Date())}</span><span>V1-1-26 Pro</span></div>
                         </div>
                     </div>
