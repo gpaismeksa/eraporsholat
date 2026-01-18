@@ -76,25 +76,28 @@
         @keyframes slideInUp { from { transform: translate(-50%, 100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
         .notif-islami { animation: slideInUp 0.5s ease-out forwards; }
 
-        .pdf-table { width: 100%; border-collapse: collapse; font-size: 8px; font-family: 'Times New Roman', serif; }
-        .pdf-table th, .pdf-table td { border: 1px solid #000; padding: 1px; text-align: center; height: 12px; }
+        /* Style Tabel Khusus PDF - Adjusted Font Size */
+        .pdf-table { width: 100%; border-collapse: collapse; font-size: 10px; font-family: 'Times New Roman', serif; } /* Naikkan ke 10px */
+        .pdf-table th, .pdf-table td { border: 1px solid #000; padding: 2px 3px; text-align: center; height: 13px; line-height: 1.1; } 
         .pdf-table th { background-color: transparent !important; color: #000000 !important; font-weight: bold; }
         
-        /* Layout Mobile/Laptop App - Universal */
         .app-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background-color: #f9fafb; box-shadow: 0 0 30px rgba(0,0,0,0.05); position: relative; }
         
-        /* Layout Khusus Guru agar Full Width di Laptop tapi Responsif di HP */
+        /* Layout Khusus Panel Guru Responsif */
+        /* Default Mobile (Sempit) */
         .teacher-layout { display: flex; flex-direction: column; min-height: 100vh; background-color: #f3f4f6; }
+        .teacher-sidebar { display: none; } /* Sembunyikan sidebar di HP */
+        .teacher-content { padding: 1rem; padding-bottom: 5rem; flex: 1; overflow-y: auto; }
+        .mobile-nav { display: flex; position: fixed; bottom: 0; left: 0; width: 100%; background: white; border-top: 1px solid #e5e7eb; padding: 0.5rem; justify-content: space-around; z-index: 50; box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1); }
+
+        /* Desktop/Laptop (Lebar > 768px) */
         @media (min-width: 768px) {
+            .app-container-teacher { max-width: 100%; }
             .teacher-layout { flex-direction: row; }
-            .teacher-content { flex: 1; overflow-y: auto; padding: 2rem; }
-            .teacher-sidebar { width: 16rem; background-color: #166534; color: white; display: block; }
-            .mobile-nav { display: none; }
-        }
-        @media (max-width: 767px) {
-            .teacher-content { padding: 1rem; padding-bottom: 5rem; }
-            .teacher-sidebar { display: none; }
-            .mobile-nav { display: flex; }
+            .teacher-sidebar { width: 18rem; background-color: #166534; color: white; display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; flex-shrink: 0; }
+            .teacher-content { flex: 1; padding: 2rem; overflow-y: auto; padding-bottom: 2rem; }
+            .mobile-nav { display: none; } /* Sembunyikan nav bawah di Laptop */
+            .mobile-header { display: none; } /* Sembunyikan header HP di Laptop */
         }
     </style>
 </head>
@@ -306,7 +309,7 @@
                     {/* Content */}
                     <div className="teacher-content">
                         {/* Mobile Header */}
-                        <div className="md:hidden flex justify-between items-center mb-4 bg-green-800 text-white p-4 rounded-xl shadow-md sticky top-0 z-20">
+                        <div className="md:hidden mobile-header flex justify-between items-center mb-4 bg-green-800 text-white p-4 rounded-xl shadow-md sticky top-0 z-20">
                             <div className="font-bold flex items-center gap-2"><i className="fas fa-mosque"></i> Panel Guru</div>
                             <button onClick={onLogout} className="text-xs bg-red-600 px-3 py-1 rounded-full shadow">Logout</button>
                         </div>
@@ -340,7 +343,7 @@
                                 
                                 {view==='teachers' && <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100">
                                     <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-gray-700">Data Guru</h3><button onClick={()=>setShowTeacherModal(true)} className="bg-green-600 text-white px-3 py-2 rounded-lg text-sm shadow hover:bg-green-700"><i className="fas fa-plus mr-1"></i> Guru Baru</button></div>
-                                    <div className="mb-4"><input placeholder="Cari Guru..." className="border p-2 rounded-lg text-sm bg-gray-50 w-full outline-none focus:ring-1 focus:ring-green-500" value={teacherSearch} onChange={e=>setTeacherSearch(e.target.value)}/></div>
+                                    <div className="mb-4"><input placeholder="Cari..." className="border p-2 rounded-lg text-sm w-full" value={teacherSearch} onChange={e=>setTeacherSearch(e.target.value)}/></div>
                                     <div className="overflow-x-auto rounded-lg border border-gray-100">
                                         <table className="w-full text-sm text-left whitespace-nowrap">
                                             <thead className="bg-green-50 text-green-800"><tr><th className="p-3">Nama</th><th className="p-3">Email</th><th className="p-3">Aksi</th></tr></thead>
@@ -374,7 +377,7 @@
                     </div>
                     
                     {/* Mobile Bottom Nav (Fixed) */}
-                    <div className="mobile-nav fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 justify-around p-2 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-safe">
+                    <div className="mobile-nav">
                          <button onClick={()=>setView('dashboard')} className={`flex flex-col items-center w-1/4 py-1 rounded-lg transition ${view==='dashboard'?'text-green-600 bg-green-50':'text-gray-400'}`}><i className="fas fa-chart-pie text-lg mb-1"></i><span className="text-[10px] font-medium">Home</span></button>
                          <button onClick={()=>setView('students')} className={`flex flex-col items-center w-1/4 py-1 rounded-lg transition ${view==='students'?'text-green-600 bg-green-50':'text-gray-400'}`}><i className="fas fa-user-graduate text-lg mb-1"></i><span className="text-[10px] font-medium">Siswa</span></button>
                          <button onClick={()=>setView('teachers')} className={`flex flex-col items-center w-1/4 py-1 rounded-lg transition ${view==='teachers'?'text-green-600 bg-green-50':'text-gray-400'}`}><i className="fas fa-chalkboard-teacher text-lg mb-1"></i><span className="text-[10px] font-medium">Guru</span></button>
@@ -382,7 +385,7 @@
                     </div>
 
                     {/* Modals (Responsive) */}
-                    {showModal && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl transform transition-all scale-100"><h3 className="font-bold mb-4 text-lg text-gray-800">Tambah Siswa</h3><div className="space-y-3"><input placeholder="Nama Lengkap" className="w-full border p-3 rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-green-500 text-sm" value={newStudent.name} onChange={e=>setNewStudent({...newStudent, name:e.target.value})}/><input placeholder="Kelas" className="w-full border p-3 rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-green-500 text-sm" value={newStudent.class} onChange={e=>setNewStudent({...newStudent, class:e.target.value})}/><select className="w-full border p-3 rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-green-500 text-sm" value={newStudent.gender} onChange={e=>setNewStudent({...newStudent, gender:e.target.value})}><option value="L">Laki-laki</option><option value="P">Perempuan</option></select><input placeholder="Email" className="w-full border p-3 rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-green-500 text-sm" value={newStudent.email} onChange={e=>setNewStudent({...newStudent, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-3 rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-green-500 text-sm" value={newStudent.password} onChange={e=>setNewStudent({...newStudent, password:e.target.value})}/><div className="flex justify-end gap-2 mt-6"><button onClick={()=>setShowModal(false)} className="px-4 py-2 text-gray-500 font-medium text-sm">Batal</button><button onClick={handleAddStudent} className="bg-green-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-green-200 text-sm">Simpan</button></div></div></div></div>}
+                    {showModal && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl transform transition-all scale-100"><h3 className="font-bold mb-4 text-lg text-gray-800">Tambah Siswa</h3><div className="space-y-3"><input placeholder="Nama Lengkap" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newStudent.name} onChange={e=>setNewStudent({...newStudent, name:e.target.value})}/><input placeholder="Kelas" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newStudent.class} onChange={e=>setNewStudent({...newStudent, class:e.target.value})}/><select className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newStudent.gender} onChange={e=>setNewStudent({...newStudent, gender:e.target.value})}><option value="L">Laki-laki</option><option value="P">Perempuan</option></select><input placeholder="Email" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newStudent.email} onChange={e=>setNewStudent({...newStudent, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newStudent.password} onChange={e=>setNewStudent({...newStudent, password:e.target.value})}/><div className="flex justify-end gap-2 mt-6"><button onClick={()=>setShowModal(false)} className="px-4 py-2 text-gray-500 font-medium text-sm">Batal</button><button onClick={handleAddStudent} className="bg-green-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-green-200 text-sm">Simpan</button></div></div></div></div>}
                     {showTeacherModal && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl"><h3 className="font-bold mb-4 text-lg text-gray-800">Tambah Guru</h3><div className="space-y-3"><input placeholder="Nama" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newTeacher.name} onChange={e=>setNewTeacher({...newTeacher, name:e.target.value})}/><input placeholder="NIP" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newTeacher.nip} onChange={e=>setNewTeacher({...newTeacher, nip:e.target.value})}/><input placeholder="Email" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newTeacher.email} onChange={e=>setNewTeacher({...newTeacher, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newTeacher.password} onChange={e=>setNewTeacher({...newTeacher, password:e.target.value})}/><div className="flex justify-end gap-2 mt-6"><button onClick={()=>setShowTeacherModal(false)} className="text-gray-500 text-sm">Batal</button><button onClick={handleAddTeacher} className="bg-green-600 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg">Simpan</button></div></div></div></div>}
                     {showEditTeacherModal && editingTeacher && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl"><h3 className="font-bold mb-4 text-lg text-gray-800">Edit Guru</h3><div className="space-y-3"><input placeholder="Nama" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={editingTeacher.name} onChange={e=>setEditingTeacher({...editingTeacher, name:e.target.value})}/><input placeholder="NIP" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={editingTeacher.nip} onChange={e=>setEditingTeacher({...editingTeacher, nip:e.target.value})}/><input placeholder="Email" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={editingTeacher.email} onChange={e=>setEditingTeacher({...editingTeacher, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={editingTeacher.password} onChange={e=>setEditingTeacher({...editingTeacher, password:e.target.value})}/><div className="flex justify-end gap-2 mt-6"><button onClick={()=>{setShowEditTeacherModal(false); setEditingTeacher(null)}} className="text-gray-500 text-sm">Batal</button><button onClick={handleUpdateTeacher} className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg">Update</button></div></div></div></div>}
                 </div>
@@ -402,10 +405,11 @@
 
             useEffect(() => { const l=async()=>{setLoading(true); setDailyData(await dbHelper.getAttendance(user.id)); setLoading(false);}; l(); }, [user.id]);
             const sD = async(d,n) => { const u={...dailyData, [d]:n}; setDailyData(u); await dbHelper.saveAttendance(user.id, u); };
-            const hW=(p,v)=>sD(selectedDate, {...currentData, wajib: {...currentData.wajib, [p]:v}});
-            const hC=(c,k)=>sD(selectedDate, {...currentData, [c]: {...(currentData[c]||{}), [k]:!currentData[c]?.[k]}});
-            const hY=()=>sD(selectedDate, {...currentData, yasin: !currentData.yasin});
-            const hF=(t)=>sD(selectedDate, {...currentData, fridayType: t});
+            const hW=(p,v)=>{ sD(selectedDate, {...currentData, wajib: {...currentData.wajib, [p]:v}, isHonest: false}); };
+            const hC=(c,k)=>{ sD(selectedDate, {...currentData, [c]: {...(currentData[c]||{}), [k]:!currentData[c]?.[k]}, isHonest: false}); };
+            const hY=()=>{ sD(selectedDate, {...currentData, yasin: !currentData.yasin, isHonest: false}); };
+            const hF=(t)=>{ sD(selectedDate, {...currentData, fridayType: t, isHonest: false}); };
+            
             const hH=(e)=>{
                 const val = e.target.checked;
                 sD(selectedDate, {...currentData, isHonest: val});
@@ -464,7 +468,33 @@
                                  </div>
                              ))}
                              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100"><h3 className="font-bold text-gray-700 mb-3 text-sm flex items-center gap-2"><i className="fas fa-star text-yellow-500"></i> Sunnah Lainnya</h3><div className="grid grid-cols-3 gap-3">{['dhuha','tahajud','witir'].map(s=>(<label key={s} className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all hover:scale-105 ${currentData.sunnah_lain?.[s]?'bg-yellow-50 border-yellow-400 text-yellow-700 shadow-sm':'bg-white border-gray-100 text-gray-400 hover:border-yellow-200'}`}><i className={`fas ${s==='dhuha'?'fa-sun':(s==='tahajud'?'fa-moon':'fa-star')} text-2xl mb-2 ${currentData.sunnah_lain?.[s]?'text-yellow-500':'text-gray-300'}`}></i><span className="capitalize text-[10px] font-bold">{s}</span><input type="checkbox" className="hidden" checked={!!currentData.sunnah_lain?.[s]} onChange={()=>hC('sunnah_lain',s)}/></label>))}</div></div>
-                             <div className={`p-4 rounded-xl border shadow-sm mb-6 transition-all duration-300 ${currentData.isHonest ? 'bg-green-50 border-green-300' : 'bg-yellow-50 border-yellow-200'}`}><label className="flex items-center gap-3 cursor-pointer"><div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center bg-white transition-colors ${currentData.isHonest?'border-green-500 bg-green-500 text-white':'border-gray-300 text-transparent'}`}><i className="fas fa-check text-xs"></i></div><div className="flex-1"><span className={`block text-xs font-bold ${currentData.isHonest ? 'text-green-800' : 'text-yellow-800'}`}>Saya bersaksi bahwa data ini benar & jujur.</span>{!currentData.isHonest && <span className="text-[10px] text-red-500 italic">*Wajib dicentang agar nilai muncul</span>}</div><input type="checkbox" className="hidden" checked={currentData.isHonest} onChange={hH}/></label></div>
+                             
+                             {/* Floating Checklist Kejujuran */}
+                             <div className={`fixed bottom-24 left-0 right-0 px-4 transition-all duration-500 ${currentData.isHonest ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100 z-50'}`}>
+                                 <label className="flex items-center gap-3 p-4 bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl border-2 border-yellow-400 cursor-pointer floating-check">
+                                     <div className="w-8 h-8 rounded-full border-2 border-yellow-500 flex items-center justify-center bg-yellow-50">
+                                         <i className="fas fa-hand-holding-heart text-yellow-600 text-sm"></i>
+                                     </div>
+                                     <div className="flex-1">
+                                          <span className="block text-sm font-bold text-yellow-800">Konfirmasi Kejujuran</span>
+                                          <span className="text-[10px] text-yellow-600">Klik di sini untuk menyimpan data</span>
+                                     </div>
+                                     <input type="checkbox" className="hidden" checked={currentData.isHonest} onChange={hH}/>
+                                 </label>
+                             </div>
+                             {/* Static Checklist (ketika sudah dicentang) */}
+                             {currentData.isHonest && (
+                                 <div className="p-4 rounded-xl border shadow-sm mb-6 bg-green-50 border-green-300 transition-all duration-300">
+                                     <label className="flex items-center gap-3 cursor-pointer">
+                                         <div className="w-6 h-6 rounded-md border-2 flex items-center justify-center bg-green-500 border-green-500 text-white">
+                                             <i className="fas fa-check text-xs"></i>
+                                         </div>
+                                         <span className="block text-xs font-bold text-green-800">Saya bersaksi bahwa data ini benar & jujur.</span>
+                                         <input type="checkbox" className="hidden" checked={currentData.isHonest} onChange={hH}/>
+                                     </label>
+                                 </div>
+                             )}
+
                          </div>
                      )}
                      {activeTab === 'report' && <ReportPreview user={user} dailyData={dailyData} calculateDailyScore={calculateDailyScore} />}
@@ -585,7 +615,7 @@
                              <div className="flex-1">
                                  <table className="pdf-table w-full">
                                      <thead>
-                                         <tr><th rowSpan="2" className="w-10">Tgl</th><th colSpan="5">Sholat Wajib</th><th rowSpan="2" className="w-12">Sunnah</th><th colSpan="3">Skor Harian</th></tr>
+                                         <tr><th rowSpan="2" className="w-10">Tgl</th><th colSpan="5">Sholat Wajib</th><th rowSpan="2" className="w-12">Sunnah</th><th colSpan="3">Skor Harian</th><th rowSpan="2" className="w-20">Ket</th></tr>
                                          <tr><th className="w-8">S</th><th className="w-8">D</th><th className="w-8">A</th><th className="w-8">M</th><th className="w-8">I</th><th className="w-10">W</th><th className="w-10">S</th><th className="w-10">Y</th></tr>
                                      </thead>
                                      <tbody>
@@ -594,12 +624,23 @@
                                             const h = dy?.isHonest;
                                             const s = h ? calculateDailyScore(dy) : {wajib:0,sunnah:0,yasin:0};
                                             const rs = (val) => (!h?'-':(!val||val==='tidak'?'X':(val==='jamaah'?'J':(val==='munfarid'?'M':'U'))));
+                                            
+                                            // Cek Tertib Harian
+                                            let isTertib = true;
+                                            if (!h) isTertib = false;
+                                            else {
+                                                ['subuh','dzuhur','ashar','maghrib','isya'].forEach(p => {
+                                                    if (!dy.wajib?.[p] || dy.wajib?.[p] === 'tidak') isTertib = false;
+                                                });
+                                            }
+
                                             return (
                                                 <tr key={d}>
                                                     <td className="font-bold text-gray-700">{d.split('-')[2]}</td>
                                                     <td>{rs(dy?.wajib?.subuh)}</td><td>{rs(dy?.wajib?.dzuhur)}</td><td>{rs(dy?.wajib?.ashar)}</td><td>{rs(dy?.wajib?.maghrib)}</td><td>{rs(dy?.wajib?.isya)}</td>
                                                     <td className="text-gray-400 italic">{h && s.sunnah>0 ? 'v' : '-'}</td>
                                                     <td className="font-bold text-gray-800">{h ? s.wajib : '0'}</td><td className="font-bold text-gray-800">{h ? s.sunnah : '0'}</td><td className="font-bold text-gray-800">{h ? s.yasin : '0'}</td>
+                                                    <td className={`text-[6px] font-bold ${isTertib ? 'text-green-600' : 'text-red-500'}`}>{h ? (isTertib ? 'Sudah Tertib' : 'Belum Tertib') : '-'}</td>
                                                 </tr>
                                             );
                                         })}
