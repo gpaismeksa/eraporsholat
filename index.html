@@ -75,29 +75,29 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes slideInUp { from { transform: translate(-50%, 100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
         .notif-islami { animation: slideInUp 0.5s ease-out forwards; }
+        
+        @keyframes floatBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .floating-check { animation: floatBounce 2s infinite ease-in-out; }
 
-        /* Style Tabel Khusus PDF - Adjusted Font Size */
-        .pdf-table { width: 100%; border-collapse: collapse; font-size: 10px; font-family: 'Times New Roman', serif; } /* Naikkan ke 10px */
-        .pdf-table th, .pdf-table td { border: 1px solid #000; padding: 2px 3px; text-align: center; height: 13px; line-height: 1.1; } 
+        /* Style Tabel Khusus PDF - SUPER COMPACT */
+        .pdf-table { width: 100%; border-collapse: collapse; font-size: 9px; font-family: 'Times New Roman', serif; }
+        .pdf-table th, .pdf-table td { border: 1px solid #000; padding: 1px 2px; text-align: center; height: 12px; line-height: 1; } 
         .pdf-table th { background-color: transparent !important; color: #000000 !important; font-weight: bold; }
         
         .app-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background-color: #f9fafb; box-shadow: 0 0 30px rgba(0,0,0,0.05); position: relative; }
         
         /* Layout Khusus Panel Guru Responsif */
-        /* Default Mobile (Sempit) */
         .teacher-layout { display: flex; flex-direction: column; min-height: 100vh; background-color: #f3f4f6; }
-        .teacher-sidebar { display: none; } /* Sembunyikan sidebar di HP */
-        .teacher-content { padding: 1rem; padding-bottom: 5rem; flex: 1; overflow-y: auto; }
-        .mobile-nav { display: flex; position: fixed; bottom: 0; left: 0; width: 100%; background: white; border-top: 1px solid #e5e7eb; padding: 0.5rem; justify-content: space-around; z-index: 50; box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1); }
-
-        /* Desktop/Laptop (Lebar > 768px) */
         @media (min-width: 768px) {
-            .app-container-teacher { max-width: 100%; }
             .teacher-layout { flex-direction: row; }
-            .teacher-sidebar { width: 18rem; background-color: #166534; color: white; display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; flex-shrink: 0; }
-            .teacher-content { flex: 1; padding: 2rem; overflow-y: auto; padding-bottom: 2rem; }
-            .mobile-nav { display: none; } /* Sembunyikan nav bawah di Laptop */
-            .mobile-header { display: none; } /* Sembunyikan header HP di Laptop */
+            .teacher-sidebar { width: 16rem; background-color: #166534; color: white; display: block; flex-shrink: 0; }
+            .teacher-content { flex: 1; overflow-y: auto; padding: 2rem; }
+            .mobile-nav { display: none; }
+        }
+        @media (max-width: 767px) {
+            .teacher-content { padding: 1rem; padding-bottom: 5rem; }
+            .teacher-sidebar { display: none; }
+            .mobile-nav { display: flex; position: fixed; bottom: 0; left: 0; width: 100%; background: white; border-top: 1px solid #e5e7eb; padding: 0.5rem; justify-content: space-around; z-index: 50; box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1); }
         }
     </style>
 </head>
@@ -113,6 +113,7 @@
         const DATA_COLLECTION = "attendance";
         const LOGO_URL = "https://aqiqahberkahkediri.com/logo/images/logo-smkn-1-plosoklaten.jpg";
         
+        // --- DB HELPERS ---
         const dbHelper = {
             async getUsers() {
                 if (window.isDemoMode || !window.db || !window.fs) return JSON.parse(localStorage.getItem('students_v1') || '[]');
@@ -121,6 +122,10 @@
             async saveUser(u) {
                 if (window.isDemoMode || !window.db || !window.fs) { const us = JSON.parse(localStorage.getItem('students_v1') || '[]'); const i = us.findIndex(x => x.id === u.id); if (i >= 0) us[i] = u; else us.push(u); localStorage.setItem('students_v1', JSON.stringify(us)); return; }
                 const { doc, setDoc } = window.fs; await setDoc(doc(window.db, 'artifacts', APP_ID, 'public', 'data', USERS_COLLECTION, u.id.toString()), u);
+            },
+            async updateUser(u) {
+                 if (window.isDemoMode || !window.db || !window.fs) { const us = JSON.parse(localStorage.getItem('students_v1') || '[]'); const i = us.findIndex(x => x.id === u.id); if (i >= 0) { us[i] = u; localStorage.setItem('students_v1', JSON.stringify(us)); } return; }
+                 const { doc, updateDoc } = window.fs; await updateDoc(doc(window.db, 'artifacts', APP_ID, 'public', 'data', USERS_COLLECTION, u.id.toString()), u);
             },
             async deleteUser(id) {
                  if (window.isDemoMode || !window.db || !window.fs) { const us = JSON.parse(localStorage.getItem('students_v1') || '[]'); localStorage.setItem('students_v1', JSON.stringify(us.filter(u => u.id !== id))); return; }
@@ -205,9 +210,13 @@
             const [showModal, setShowModal] = useState(false);
             const [showTeacherModal, setShowTeacherModal] = useState(false);
             const [showEditTeacherModal, setShowEditTeacherModal] = useState(false);
+            const [showEditStudentModal, setShowEditStudentModal] = useState(false);
+            
             const [newStudent, setNewStudent] = useState({ name: '', class: '', gender: 'L', email: '', password: '' });
             const [newTeacher, setNewTeacher] = useState({ name: '', nip: '', email: '', password: '' });
             const [editingTeacher, setEditingTeacher] = useState(null);
+            const [editingStudent, setEditingStudent] = useState(null);
+
             const [dashboardClassFilter, setDashboardClassFilter] = useState('');
             const [studentSearch, setStudentSearch] = useState('');
             const [studentClassFilter, setStudentClassFilter] = useState('');
@@ -238,11 +247,28 @@
                 }
             }, [view, students, dashboardClassFilter]);
 
+            // SISWA Handlers
             const handleAddStudent = async (e) => { e.preventDefault(); setLoading(true); await dbHelper.saveUser({ ...newStudent, id: Date.now().toString(), isBlocked: false }); await refreshData(); setShowModal(false); setLoading(false); };
-            const handleDelete = async (id) => { if(confirm('Hapus?')) { await dbHelper.deleteUser(id); refreshData(); } };
+            const handleUpdateStudent = async (e) => { e.preventDefault(); setLoading(true); await dbHelper.updateUser(editingStudent); await refreshData(); setShowEditStudentModal(false); setEditingStudent(null); setLoading(false); };
+            const handleDelete = async (id) => { if(confirm('Hapus siswa ini dari database?')) { await dbHelper.deleteUser(id); refreshData(); } };
+            const handleNaikKelas = async () => {
+                if(!confirm("Yakin ingin menaikkan tingkat kelas semua siswa? Kelas X menjadi XI, XI menjadi XII, dan XII diluluskan (dihapus). Tindakan ini tidak dapat dibatalkan.")) return;
+                setLoading(true);
+                for(let s of students) {
+                    let newClass = s.class;
+                    if(s.class.includes("X ") && !s.class.includes("XI") && !s.class.includes("XII")) { newClass = s.class.replace("X", "XI"); }
+                    else if(s.class.includes("XI ") && !s.class.includes("XII")) { newClass = s.class.replace("XI", "XII"); }
+                    else if(s.class.includes("XII ")) { await dbHelper.deleteUser(s.id); continue; }
+                    if(newClass !== s.class) { await dbHelper.saveUser({ ...s, class: newClass }); }
+                }
+                await refreshData(); setLoading(false); alert("Proses naik kelas selesai.");
+            };
+
+            // GURU Handlers
             const handleAddTeacher = async (e) => { e.preventDefault(); setLoading(true); await dbHelper.saveTeacher({ ...newTeacher, id: 'T'+Date.now() }); await refreshData(); setShowTeacherModal(false); setLoading(false); };
             const handleUpdateTeacher = async (e) => { e.preventDefault(); setLoading(true); await dbHelper.updateTeacher(editingTeacher); await refreshData(); setShowEditTeacherModal(false); setLoading(false); };
-            const handleDeleteTeacher = async (id) => { if(confirm('Hapus?')) { await dbHelper.deleteTeacher(id); refreshData(); } };
+            const handleDeleteTeacher = async (id) => { if(confirm('Hapus akun guru ini?')) { await dbHelper.deleteTeacher(id); refreshData(); } };
+
             const handleDownloadTemplate = () => exportToExcel([{ "Nama": "Siswa A", "Kelas": "X TKJ 1", "Gender(L/P)": "L", "Email": "a@smk.id", "Password": "123" }], "template_siswa");
             const handleExportData = () => exportToExcel(students.map(s => ({ ID: s.id, Nama: s.name, Kelas: s.class, Gender: s.gender, Email: s.email, Password: s.password })), "data_siswa_semua");
             const handleImportData = (e) => {
@@ -305,89 +331,28 @@
                         </nav>
                         <button onClick={onLogout} className="mt-10 text-red-300">Keluar</button>
                     </div>
-                    
                     {/* Content */}
                     <div className="teacher-content">
                         {/* Mobile Header */}
-                        <div className="md:hidden mobile-header flex justify-between items-center mb-4 bg-green-800 text-white p-4 rounded-xl shadow-md sticky top-0 z-20">
-                            <div className="font-bold flex items-center gap-2"><i className="fas fa-mosque"></i> Panel Guru</div>
-                            <button onClick={onLogout} className="text-xs bg-red-600 px-3 py-1 rounded-full shadow">Logout</button>
-                        </div>
-
+                        <div className="md:hidden flex justify-between items-center mb-4 bg-green-800 text-white p-4 rounded-xl shadow-md sticky top-0 z-20"><div className="font-bold flex items-center gap-2"><i className="fas fa-mosque"></i> Panel Guru</div><button onClick={onLogout} className="text-xs bg-red-600 px-3 py-1 rounded-full shadow">Logout</button></div>
                         {loading ? <div className="text-center mt-10"><div className="loader mx-auto"></div></div> : (
                             <>
                                 {view==='dashboard' && <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100"><h3 className="font-bold text-lg mb-4 text-green-800">Grafik Perkembangan</h3><select className="border p-2 rounded-lg mb-4 w-full md:w-auto bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-green-500" value={dashboardClassFilter} onChange={e=>setDashboardClassFilter(e.target.value)}><option value="">Semua Kelas</option>{uC.map((c,i)=><option key={i} value={c}>{c}</option>)}</select><div className="h-64"><canvas id="progressChart"></canvas></div></div>}
-                                
-                                {view==='students' && <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100">
-                                    <div className="flex flex-col md:flex-row justify-between gap-3 mb-4">
-                                        <div className="flex gap-2 overflow-x-auto pb-1">
-                                            <button onClick={()=>setShowModal(true)} className="bg-green-600 text-white px-3 py-2 rounded-lg text-sm shadow hover:bg-green-700 whitespace-nowrap"><i className="fas fa-plus"></i></button>
-                                            <button onClick={handleDownloadTemplate} className="bg-gray-500 text-white px-3 py-2 rounded-lg text-sm shadow hover:bg-gray-600 whitespace-nowrap"><i className="fas fa-file-excel"></i> Template</button>
-                                            <label className="bg-blue-500 text-white px-3 py-2 rounded-lg text-sm shadow hover:bg-blue-600 cursor-pointer whitespace-nowrap"><i className="fas fa-file-upload"></i> Import<input type="file" onChange={handleImportData} className="hidden" accept=".xlsx"/></label>
-                                            <button onClick={handleExportData} className="bg-yellow-500 text-white px-3 py-2 rounded-lg text-sm shadow hover:bg-yellow-600 whitespace-nowrap"><i className="fas fa-file-download"></i> Export</button>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                                        <input placeholder="Cari Siswa..." className="border p-2 rounded-lg text-sm bg-gray-50 w-full outline-none focus:ring-1 focus:ring-green-500" value={studentSearch} onChange={e=>setStudentSearch(e.target.value)}/>
-                                        <select className="border p-2 rounded-lg text-sm bg-gray-50 w-full outline-none focus:ring-1 focus:ring-green-500" value={studentClassFilter} onChange={e=>setStudentClassFilter(e.target.value)}><option value="">Semua Kelas</option>{uC.map((c,i)=><option key={i} value={c}>{c}</option>)}</select>
-                                        <select className="border p-2 rounded-lg text-sm bg-gray-50 w-full outline-none focus:ring-1 focus:ring-green-500" value={itemsPerPage} onChange={e=>setItemsPerPage(Number(e.target.value))}><option value={10}>10 Data</option><option value={50}>50 Data</option></select>
-                                    </div>
-                                    <div className="overflow-x-auto rounded-lg border border-gray-100">
-                                        <table className="w-full text-sm text-left whitespace-nowrap">
-                                            <thead className="bg-green-50 text-green-800"><tr><th className="p-3">Nama</th><th className="p-3">Kelas</th><th className="p-3">Email</th><th className="p-3">Aksi</th></tr></thead>
-                                            <tbody className="divide-y divide-gray-100">{cS.map(s=><tr key={s.id} className="hover:bg-gray-50"><td className="p-3 font-medium">{s.name}</td><td className="p-3">{s.class}</td><td className="p-3 text-gray-500">{s.email}</td><td className="p-3"><button onClick={()=>handleDelete(s.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-full transition"><i className="fas fa-trash"></i></button></td></tr>)}</tbody>
-                                        </table>
-                                    </div>
-                                    <div className="flex justify-between items-center mt-4 text-xs text-gray-500"><span>Hal {currentPage} / {totalPages||1}</span><div className="flex gap-2"><button onClick={()=>setCurrentPage(p=>Math.max(1,p-1))} disabled={currentPage===1} className="px-3 py-1 border rounded-lg bg-white disabled:opacity-50">Prev</button><button onClick={()=>setCurrentPage(p=>Math.min(totalPages,p+1))} disabled={currentPage===totalPages} className="px-3 py-1 border rounded-lg bg-white disabled:opacity-50">Next</button></div></div>
-                                </div>}
-                                
-                                {view==='teachers' && <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100">
-                                    <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-gray-700">Data Guru</h3><button onClick={()=>setShowTeacherModal(true)} className="bg-green-600 text-white px-3 py-2 rounded-lg text-sm shadow hover:bg-green-700"><i className="fas fa-plus mr-1"></i> Guru Baru</button></div>
-                                    <div className="mb-4"><input placeholder="Cari..." className="border p-2 rounded-lg text-sm w-full" value={teacherSearch} onChange={e=>setTeacherSearch(e.target.value)}/></div>
-                                    <div className="overflow-x-auto rounded-lg border border-gray-100">
-                                        <table className="w-full text-sm text-left whitespace-nowrap">
-                                            <thead className="bg-green-50 text-green-800"><tr><th className="p-3">Nama</th><th className="p-3">Email</th><th className="p-3">Aksi</th></tr></thead>
-                                            <tbody className="divide-y divide-gray-100">{cT.map(t=><tr key={t.id} className="hover:bg-gray-50"><td className="p-3 font-medium">{t.name}</td><td className="p-3 text-gray-500">{t.email}</td><td className="p-3 flex gap-2"><button onClick={()=>{setEditingTeacher(t);setShowEditTeacherModal(true)}} className="text-blue-500 hover:bg-blue-50 p-2 rounded-full"><i className="fas fa-edit"></i></button><button onClick={()=>handleDeleteTeacher(t.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-full"><i className="fas fa-trash"></i></button></td></tr>)}</tbody>
-                                        </table>
-                                    </div>
-                                </div>}
-
-                                {view==='rekap' && <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100">
-                                    <h3 className="font-bold mb-4 text-gray-700">Rekapitulasi Nilai</h3>
-                                    <div className="grid grid-cols-1 gap-3 mb-4">
-                                        <div><label className="text-xs text-gray-500 mb-1 block">Kelas</label><select className="w-full border p-2 rounded-lg text-sm bg-gray-50" value={rekapFilter.class} onChange={e=>setRekapFilter({...rekapFilter,class:e.target.value})}><option value="">Pilih Kelas</option>{uC.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div><label className="text-xs text-gray-500 mb-1 block">Dari</label><input type="date" className="w-full border p-2 rounded-lg text-sm bg-gray-50" value={rekapFilter.start} onChange={e=>setRekapFilter({...rekapFilter,start:e.target.value})}/></div>
-                                            <div><label className="text-xs text-gray-500 mb-1 block">Sampai</label><input type="date" className="w-full border p-2 rounded-lg text-sm bg-gray-50" value={rekapFilter.end} onChange={e=>setRekapFilter({...rekapFilter,end:e.target.value})}/></div>
-                                        </div>
-                                        <button onClick={processRekap} className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition">{processingRekap?'Memproses...':'Tampilkan Data'}</button>
-                                    </div>
-                                    {rekapData.length>0 && <div className="mt-4 border-t border-gray-100 pt-4">
-                                        <div className="flex justify-between items-center mb-3"><h4 className="font-bold text-sm">Hasil</h4><button onClick={()=>exportToExcel(rekapData,'Rekap')} className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-lg font-bold"><i className="fas fa-download mr-1"></i> Excel</button></div>
-                                        <div className="overflow-x-auto rounded-lg border border-gray-100">
-                                            <table className="w-full text-sm text-left whitespace-nowrap">
-                                                <thead className="bg-green-600 text-white text-xs"><tr><th className="p-2">Nama</th><th className="p-2 text-center">Wajib</th><th className="p-2 text-center">Sunnah</th><th className="p-2 text-center">Yasin</th><th className="p-2 text-center">Akhir</th></tr></thead>
-                                                <tbody className="divide-y divide-gray-100">{rekapData.map((r,i)=><tr key={i} className="hover:bg-gray-50"><td className="p-2 text-xs font-medium">{r.Nama}</td><td className="p-2 text-center text-xs">{r.Wajib}</td><td className="p-2 text-center text-xs">{r.Sunnah}</td><td className="p-2 text-center text-xs">{r.Yasin}</td><td className="p-2 text-center text-xs font-bold text-green-700">{r.Akhir}</td></tr>)}</tbody>
-                                            </table>
-                                        </div>
-                                    </div>}
-                                </div>}
+                                {view==='students' && <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100"><div className="flex flex-wrap gap-2 mb-4"><button onClick={()=>setShowModal(true)} className="bg-green-600 text-white px-3 py-2 rounded-lg text-sm shadow hover:bg-green-700">Tambah</button><button onClick={handleNaikKelas} className="bg-purple-600 text-white px-3 py-2 rounded-lg text-sm shadow hover:bg-purple-700">Naik Kelas</button><button onClick={handleDownloadTemplate} className="bg-gray-500 text-white px-3 py-2 rounded-lg text-sm shadow hover:bg-gray-600">Template</button><label className="bg-blue-500 text-white px-3 py-2 rounded-lg text-sm shadow hover:bg-blue-600 cursor-pointer">Import<input type="file" onChange={handleImportData} className="hidden" accept=".xlsx"/></label><button onClick={handleExportData} className="bg-yellow-500 text-white px-3 py-2 rounded-lg text-sm shadow hover:bg-yellow-600">Export</button></div><div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4"><input placeholder="Cari..." className="border p-2 rounded-lg text-sm w-full" value={studentSearch} onChange={e=>setStudentSearch(e.target.value)}/><select className="border p-2 rounded-lg text-sm w-full" value={studentClassFilter} onChange={e=>setStudentClassFilter(e.target.value)}><option value="">Semua Kelas</option>{uC.map((c,i)=><option key={i} value={c}>{c}</option>)}</select><select className="border p-2 rounded-lg text-sm w-full" value={itemsPerPage} onChange={e=>setItemsPerPage(Number(e.target.value))}><option value={10}>10 Data</option><option value={50}>50 Data</option></select></div><div className="overflow-x-auto rounded-lg border border-gray-100"><table className="w-full text-sm text-left whitespace-nowrap"><thead className="bg-green-50 text-green-800"><tr><th className="p-3">Nama</th><th className="p-3">Kelas</th><th className="p-3">L/P</th><th className="p-3">Email</th><th className="p-3">Sandi</th><th className="p-3">Aksi</th></tr></thead><tbody className="divide-y divide-gray-100">{cS.map(s=><tr key={s.id} className="hover:bg-gray-50"><td className="p-3 font-medium">{s.name}</td><td className="p-3">{s.class}</td><td className="p-3">{s.gender}</td><td className="p-3 text-gray-500">{s.email}</td><td className="p-3 font-mono text-gray-500 bg-gray-50 rounded px-2">{s.password}</td><td className="p-3 flex gap-2"><button onClick={()=>{setEditingStudent(s); setShowEditStudentModal(true)}} className="text-blue-500"><i className="fas fa-edit"></i></button><button onClick={()=>handleDelete(s.id)} className="text-red-500"><i className="fas fa-trash"></i></button></td></tr>)}</tbody></table></div><div className="flex justify-between items-center mt-4 text-xs text-gray-500"><span>Hal {currentPage} / {totalPages||1}</span><div className="flex gap-2"><button onClick={()=>setCurrentPage(p=>Math.max(1,p-1))} disabled={currentPage===1} className="px-3 py-1 border rounded-lg bg-white disabled:opacity-50">Prev</button><button onClick={()=>setCurrentPage(p=>Math.min(totalPages,p+1))} disabled={currentPage===totalPages} className="px-3 py-1 border rounded-lg bg-white disabled:opacity-50">Next</button></div></div></div>}
+                                {view==='teachers' && <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100"><div className="flex justify-between items-center mb-4"><h3 className="font-bold text-gray-700">Data Guru</h3><button onClick={()=>setShowTeacherModal(true)} className="bg-green-600 text-white px-3 py-2 rounded-lg text-sm shadow hover:bg-green-700">Tambah</button></div><div className="mb-4"><input placeholder="Cari..." className="border p-2 rounded-lg text-sm w-full" value={teacherSearch} onChange={e=>setTeacherSearch(e.target.value)}/></div><div className="overflow-x-auto rounded-lg border border-gray-100"><table className="w-full text-sm text-left whitespace-nowrap"><thead className="bg-green-50 text-green-800"><tr><th className="p-3">Nama</th><th className="p-3">Email</th><th className="p-3">Aksi</th></tr></thead><tbody className="divide-y divide-gray-100">{cT.map(t=><tr key={t.id} className="hover:bg-gray-50"><td className="p-3 font-medium">{t.name}</td><td className="p-3 text-gray-500">{t.email}</td><td className="p-3 flex gap-2"><button onClick={()=>{setEditingTeacher(t);setShowEditTeacherModal(true)}} className="text-blue-500"><i className="fas fa-edit"></i></button><button onClick={()=>handleDeleteTeacher(t.id)} className="text-red-500"><i className="fas fa-trash"></i></button></td></tr>)}</tbody></table></div></div>}
+                                {view==='rekap' && <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100"><h3 className="font-bold mb-4 text-gray-700">Rekapitulasi</h3><div className="grid grid-cols-1 gap-3 mb-4"><div><label className="text-xs text-gray-500 mb-1 block">Kelas</label><select className="w-full border p-2 rounded-lg text-sm bg-gray-50" value={rekapFilter.class} onChange={e=>setRekapFilter({...rekapFilter,class:e.target.value})}><option value="">Pilih</option>{uC.map(c=><option key={c} value={c}>{c}</option>)}</select></div><div className="grid grid-cols-2 gap-3"><div><label className="text-xs text-gray-500 mb-1 block">Dari</label><input type="date" className="w-full border p-2 rounded-lg text-sm bg-gray-50" value={rekapFilter.start} onChange={e=>setRekapFilter({...rekapFilter,start:e.target.value})}/></div><div><label className="text-xs text-gray-500 mb-1 block">Sampai</label><input type="date" className="w-full border p-2 rounded-lg text-sm bg-gray-50" value={rekapFilter.end} onChange={e=>setRekapFilter({...rekapFilter,end:e.target.value})}/></div></div><button onClick={processRekap} className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition">{processingRekap?'...':'Proses'}</button></div>{rekapData.length>0 && <div className="mt-4 border-t border-gray-100 pt-4"><div className="flex justify-between items-center mb-3"><h4 className="font-bold text-sm">Hasil</h4><button onClick={()=>exportToExcel(rekapData,'Rekap')} className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-lg font-bold">Excel</button></div><div className="overflow-x-auto rounded-lg border border-gray-100"><table className="w-full text-sm text-left whitespace-nowrap"><thead className="bg-green-600 text-white text-xs"><tr><th className="p-2">Nama</th><th className="p-2 text-center">Wajib</th><th className="p-2 text-center">Sunnah</th><th className="p-2 text-center">Yasin</th><th className="p-2 text-center">Akhir</th></tr></thead><tbody className="divide-y divide-gray-100">{rekapData.map((r,i)=><tr key={i} className="hover:bg-gray-50"><td className="p-2 text-xs font-medium">{r.Nama}</td><td className="p-2 text-center text-xs">{r.Wajib}</td><td className="p-2 text-center text-xs">{r.Sunnah}</td><td className="p-2 text-center text-xs">{r.Yasin}</td><td className="p-2 text-center text-xs font-bold text-green-700">{r.Akhir}</td></tr>)}</tbody></table></div></div>}</div>}
                             </>
                         )}
                     </div>
                     
-                    {/* Mobile Bottom Nav (Fixed) */}
-                    <div className="mobile-nav">
-                         <button onClick={()=>setView('dashboard')} className={`flex flex-col items-center w-1/4 py-1 rounded-lg transition ${view==='dashboard'?'text-green-600 bg-green-50':'text-gray-400'}`}><i className="fas fa-chart-pie text-lg mb-1"></i><span className="text-[10px] font-medium">Home</span></button>
-                         <button onClick={()=>setView('students')} className={`flex flex-col items-center w-1/4 py-1 rounded-lg transition ${view==='students'?'text-green-600 bg-green-50':'text-gray-400'}`}><i className="fas fa-user-graduate text-lg mb-1"></i><span className="text-[10px] font-medium">Siswa</span></button>
-                         <button onClick={()=>setView('teachers')} className={`flex flex-col items-center w-1/4 py-1 rounded-lg transition ${view==='teachers'?'text-green-600 bg-green-50':'text-gray-400'}`}><i className="fas fa-chalkboard-teacher text-lg mb-1"></i><span className="text-[10px] font-medium">Guru</span></button>
-                         <button onClick={()=>setView('rekap')} className={`flex flex-col items-center w-1/4 py-1 rounded-lg transition ${view==='rekap'?'text-green-600 bg-green-50':'text-gray-400'}`}><i className="fas fa-file-invoice text-lg mb-1"></i><span className="text-[10px] font-medium">Nilai</span></button>
-                    </div>
+                    {/* Mobile Bottom Nav */}
+                    <div className="mobile-nav fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 justify-around p-2 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-safe"><button onClick={()=>setView('dashboard')} className={`flex flex-col items-center w-1/4 py-1 rounded-lg ${view==='dashboard'?'text-green-600 bg-green-50':'text-gray-400'}`}><i className="fas fa-chart-pie text-lg mb-1"></i><span className="text-[10px] font-medium">Home</span></button><button onClick={()=>setView('students')} className={`flex flex-col items-center w-1/4 py-1 rounded-lg ${view==='students'?'text-green-600 bg-green-50':'text-gray-400'}`}><i className="fas fa-user-graduate text-lg mb-1"></i><span className="text-[10px] font-medium">Siswa</span></button><button onClick={()=>setView('teachers')} className={`flex flex-col items-center w-1/4 py-1 rounded-lg ${view==='teachers'?'text-green-600 bg-green-50':'text-gray-400'}`}><i className="fas fa-chalkboard-teacher text-lg mb-1"></i><span className="text-[10px] font-medium">Guru</span></button><button onClick={()=>setView('rekap')} className={`flex flex-col items-center w-1/4 py-1 rounded-lg ${view==='rekap'?'text-green-600 bg-green-50':'text-gray-400'}`}><i className="fas fa-file-invoice text-lg mb-1"></i><span className="text-[10px] font-medium">Nilai</span></button></div>
 
-                    {/* Modals (Responsive) */}
-                    {showModal && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl transform transition-all scale-100"><h3 className="font-bold mb-4 text-lg text-gray-800">Tambah Siswa</h3><div className="space-y-3"><input placeholder="Nama Lengkap" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newStudent.name} onChange={e=>setNewStudent({...newStudent, name:e.target.value})}/><input placeholder="Kelas" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newStudent.class} onChange={e=>setNewStudent({...newStudent, class:e.target.value})}/><select className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newStudent.gender} onChange={e=>setNewStudent({...newStudent, gender:e.target.value})}><option value="L">Laki-laki</option><option value="P">Perempuan</option></select><input placeholder="Email" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newStudent.email} onChange={e=>setNewStudent({...newStudent, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newStudent.password} onChange={e=>setNewStudent({...newStudent, password:e.target.value})}/><div className="flex justify-end gap-2 mt-6"><button onClick={()=>setShowModal(false)} className="px-4 py-2 text-gray-500 font-medium text-sm">Batal</button><button onClick={handleAddStudent} className="bg-green-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-green-200 text-sm">Simpan</button></div></div></div></div>}
-                    {showTeacherModal && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl"><h3 className="font-bold mb-4 text-lg text-gray-800">Tambah Guru</h3><div className="space-y-3"><input placeholder="Nama" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newTeacher.name} onChange={e=>setNewTeacher({...newTeacher, name:e.target.value})}/><input placeholder="NIP" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newTeacher.nip} onChange={e=>setNewTeacher({...newTeacher, nip:e.target.value})}/><input placeholder="Email" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newTeacher.email} onChange={e=>setNewTeacher({...newTeacher, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newTeacher.password} onChange={e=>setNewTeacher({...newTeacher, password:e.target.value})}/><div className="flex justify-end gap-2 mt-6"><button onClick={()=>setShowTeacherModal(false)} className="text-gray-500 text-sm">Batal</button><button onClick={handleAddTeacher} className="bg-green-600 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg">Simpan</button></div></div></div></div>}
+                    {/* Modals */}
+                    {showModal && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl transform transition-all scale-100"><h3 className="font-bold mb-4 text-lg text-gray-800">Tambah Siswa</h3><div className="space-y-3"><input placeholder="Nama" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newStudent.name} onChange={e=>setNewStudent({...newStudent, name:e.target.value})}/><input placeholder="Kelas" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newStudent.class} onChange={e=>setNewStudent({...newStudent, class:e.target.value})}/><select className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newStudent.gender} onChange={e=>setNewStudent({...newStudent, gender:e.target.value})}><option value="L">L</option><option value="P">P</option></select><input placeholder="Email" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newStudent.email} onChange={e=>setNewStudent({...newStudent, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newStudent.password} onChange={e=>setNewStudent({...newStudent, password:e.target.value})}/><div className="flex justify-end gap-2 mt-6"><button onClick={()=>setShowModal(false)} className="px-4 py-2 text-gray-500 font-medium text-sm">Batal</button><button onClick={handleAddStudent} className="bg-green-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg">Simpan</button></div></div></div></div>}
+                    {showTeacherModal && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl"><h3 className="font-bold mb-4 text-lg text-gray-800">Tambah Guru</h3><div className="space-y-3"><input placeholder="Nama" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newTeacher.name} onChange={e=>setNewTeacher({...newTeacher, name:e.target.value})}/><input placeholder="NIP" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newTeacher.nip} onChange={e=>setNewTeacher({...newTeacher, nip:e.target.value})}/><input placeholder="Email" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newTeacher.email} onChange={e=>setNewTeacher({...newTeacher, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={newTeacher.password} onChange={e=>setNewTeacher({...newTeacher, password:e.target.value})}/><div className="flex justify-end gap-2 mt-6"><button onClick={()=>setShowTeacherModal(false)} className="text-gray-500 text-sm">Batal</button><button onClick={handleAddTeacher} className="bg-green-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg">Simpan</button></div></div></div></div>}
                     {showEditTeacherModal && editingTeacher && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl"><h3 className="font-bold mb-4 text-lg text-gray-800">Edit Guru</h3><div className="space-y-3"><input placeholder="Nama" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={editingTeacher.name} onChange={e=>setEditingTeacher({...editingTeacher, name:e.target.value})}/><input placeholder="NIP" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={editingTeacher.nip} onChange={e=>setEditingTeacher({...editingTeacher, nip:e.target.value})}/><input placeholder="Email" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={editingTeacher.email} onChange={e=>setEditingTeacher({...editingTeacher, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={editingTeacher.password} onChange={e=>setEditingTeacher({...editingTeacher, password:e.target.value})}/><div className="flex justify-end gap-2 mt-6"><button onClick={()=>{setShowEditTeacherModal(false); setEditingTeacher(null)}} className="text-gray-500 text-sm">Batal</button><button onClick={handleUpdateTeacher} className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg">Update</button></div></div></div></div>}
+                    {showEditStudentModal && editingStudent && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"><div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl"><h3 className="font-bold mb-4 text-lg text-gray-800">Edit Siswa</h3><div className="space-y-3"><input placeholder="Nama" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={editingStudent.name} onChange={e=>setEditingStudent({...editingStudent, name:e.target.value})}/><input placeholder="Kelas" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={editingStudent.class} onChange={e=>setEditingStudent({...editingStudent, class:e.target.value})}/><select className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={editingStudent.gender} onChange={e=>setEditingStudent({...editingStudent, gender:e.target.value})}><option value="L">L</option><option value="P">P</option></select><input placeholder="Email" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={editingStudent.email} onChange={e=>setEditingStudent({...editingStudent, email:e.target.value})}/><input placeholder="Sandi" className="w-full border p-3 rounded-xl bg-gray-50 text-sm" value={editingStudent.password} onChange={e=>setEditingStudent({...editingStudent, password:e.target.value})}/><div className="flex justify-end gap-2 mt-6"><button onClick={()=>{setShowEditStudentModal(false); setEditingStudent(null)}} className="text-gray-500 text-sm">Batal</button><button onClick={handleUpdateStudent} className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg">Update</button></div></div></div></div>}
                 </div>
             );
         };
